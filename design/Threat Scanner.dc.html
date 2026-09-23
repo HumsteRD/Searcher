@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+  html, body { margin: 0; padding: 0; background: #06080F; }
+  body { font-family: 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  a { color: #7FA6FF; text-decoration: none; }
+  a:hover { color: #9DBBFF; }
+  [data-console]::-webkit-scrollbar { width: 10px; background: transparent; }
+  [data-console]::-webkit-scrollbar-track { background: #0E1224; border-radius: 5px; }
+  [data-console]::-webkit-scrollbar-thumb { background: #2E3654; border-radius: 5px; min-height: 32px; }
+  [data-console]::-webkit-scrollbar-thumb:hover { background: #3C4670; }
+</style>
+</helmet>
+<div style="width:1360px;margin:0 auto;padding:0 40px 96px;color:#E8EBF5">
+
+  <div style="position:sticky;top:0;z-index:30;background:#06080F;border-bottom:1px solid #161B2B;padding:18px 0 14px;margin-bottom:36px">
+    <div style="display:flex;align-items:baseline;justify-content:space-between">
+      <div style="display:flex;align-items:baseline;gap:14px">
+        <span style="font-size:20px;font-weight:600">Threat Scanner</span>
+        <span style="font-size:13px;color:#808AA8">Qt 6 Widgets · QSS design system v1.0</span>
+      </div>
+      <div style="display:flex;gap:20px;font-size:13px;font-weight:500">
+        <a href="#screens">Screens</a>
+        <a href="#tokens">Tokens</a>
+        <a href="#components">Components</a>
+        <a href="#surface">Background</a>
+        <a href="#motion">Shadows &amp; motion</a>
+        <a href="#icons">Icons</a>
+        <a href="#limits">QSS limits</a>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <span style="font-size:12px;color:#A2AAC4;background:#111629;border:1px solid #232A44;border-radius:5px;padding:3px 9px">1280 × 800 target</span>
+      <span style="font-size:12px;color:#A2AAC4;background:#111629;border:1px solid #232A44;border-radius:5px;padding:3px 9px">1100 × 720 min</span>
+      <span style="font-size:12px;color:#A2AAC4;background:#111629;border:1px solid #232A44;border-radius:5px;padding:3px 9px">stretches to 1920 × 1080</span>
+      <span style="font-size:12px;color:#A2AAC4;background:#111629;border:1px solid #232A44;border-radius:5px;padding:3px 9px">Segoe UI Variable Display / Cascadia Mono</span>
+      <span style="font-size:12px;color:#A2AAC4;background:#111629;border:1px solid #232A44;border-radius:5px;padding:3px 9px">7 type sizes · 4px spacing</span>
+    </div>
+  </div>
+
+  <div id="screens" style="display:flex;flex-direction:column;gap:44px">
+
+    <div>
+      <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:14px">
+        <span style="font-size:12px;font-weight:600;color:#7FA6FF;letter-spacing:1.1px">01 — HOME</span>
+        <span style="font-size:13px;color:#808AA8">State in one glance: hero verdict, last scan, one primary action, three counters.</span>
+      </div>
+      <div data-screen-label="01 Home" style="width:1280px;height:800px;border-radius:8px;overflow:hidden;border:1px solid #232A44;display:flex;background-color:#0A0D18;background-image:radial-gradient(48% 48% at 10% 4%,rgba(62,47,158,0.647) 0%,rgba(62,47,158,0.356) 40%,rgba(62,47,158,0.129) 70%,rgba(62,47,158,0) 100%),radial-gradient(42% 42% at 82% 2%,rgba(29,90,168,0.471) 0%,rgba(29,90,168,0.259) 40%,rgba(29,90,168,0.094) 70%,rgba(29,90,168,0) 100%),radial-gradient(55% 55% at 96% 96%,rgba(42,47,122,0.412) 0%,rgba(42,47,122,0.227) 40%,rgba(42,47,122,0.082) 70%,rgba(42,47,122,0) 100%),radial-gradient(45% 45% at 26% 88%,rgba(20,69,110,0.314) 0%,rgba(20,69,110,0.173) 40%,rgba(20,69,110,0.063) 70%,rgba(20,69,110,0) 100%)">
+        <dc-import name="ThreatSidebar" active="home" hint-size="216px,100%"></dc-import>
+        <div style="flex:1;display:flex;flex-direction:column;min-width:0">
+          <dc-import name="ThreatTitlebar" page="Home" hint-size="100%,56px"></dc-import>
+          <div style="flex:1;padding:24px 28px 28px;display:flex;flex-direction:column;min-height:0">
+            <div style="font-size:12px;font-weight:600;color:#808AA8;letter-spacing:1.1px;margin-bottom:12px">SYSTEM STATUS</div>
+            <div style="height:300px;flex:none;background:rgba(21,26,46,0.88);border:1px solid #262C44;border-radius:16px;padding:36px;display:flex;align-items:center;gap:28px;box-shadow:0 8px 32px rgba(5,7,15,0.55)">
+              <div style="width:96px;height:96px;flex:none;border-radius:20px;display:flex;align-items:center;justify-content:center;background:{{heroTileBg}};border:1px solid {{heroTileBorder}};color:{{heroIconColor}}">
+                <sc-if value="{{ isProtected }}" hint-placeholder-val="{{ false }}">
+                  <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2 19.2 6v6.1c0 4.1-2.9 7.2-7.2 8.7-4.3-1.5-7.2-4.6-7.2-8.7V6L12 3.2Z"></path><path d="m8.9 11.9 2.3 2.3 4.1-4.4"></path></svg>
+                </sc-if>
+                <sc-if value="{{ isAlarm }}" hint-placeholder-val="{{ true }}">
+                  <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4.4 21 19.6H3L12 4.4Z"></path><path d="M12 9.8v4.4"></path><path d="M12 17h.01"></path></svg>
+                </sc-if>
+              </div>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:30px;font-weight:600;line-height:38px;color:#E8EBF5">{{heroTitle}}</div>
+                <div style="font-size:14px;line-height:20px;color:#A2AAC4;margin-top:8px">{{heroSub}}</div>
+                <div style="display:flex;gap:12px;margin-top:24px">
+                  <div style="height:40px;padding:0 20px;border-radius:8px;background:#3E6FD9;border:1px solid transparent;color:#FFFFFF;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;box-shadow:0 3px 14px rgba(11,27,71,0.47)" style-hover="background:#4C7DEA" style-active="background:#3260C0">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.2"></circle><path d="m15.6 15.6 4.4 4.4"></path></svg>
+                    <span>Start scan</span>
+                  </div>
+                  <div style="height:40px;padding:0 20px;border-radius:8px;background:#1B2136;border:1px solid #626C92;color:#E8EBF5;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px" style-hover="background:#222A46;border-color:#7D89B4" style-active="background:#151A2E">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7h12M8 12h12M8 17h12"></path><path d="M4 7h.01M4 12h.01M4 17h.01"></path></svg>
+                    <span>Review threats</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div style="font-size:12px;font-weight:600;color:#808AA8;letter-spacing:1.1px;margin:28px 0 12px">OVERVIEW</div>
+            <div style="display:flex;gap:16px;flex:none">
+              <div style="flex:1;height:168px;background:rgba(21,26,46,0.88);border:1px solid #262C44;border-radius:12px;padding:24px;display:flex;flex-direction:column">
+                <div style="font-size:12px;font-weight:600;color:#808AA8;letter-spacing:1.1px">THREATS FOUND</div>
+                <div style="font-size:44px;font-weight:600;line-height:52px;margin-top:auto;color:{{metricThreatColor}}">{{metricThreats}}</div>
+                <div style="font-size:13px;color:#808AA8;margin-top:4px">{{metricThreatsSub}}</div>
+              </div>
+              <div style="flex:1;height:168px;background:rgba(21,26,46,0.88);border:1px solid #262C44;border-radius:12px;padding:24px;display:flex;flex-direction:column">
+                <div style="font-size:12px;font-weight:600;color:#808AA8;letter-spacing:1.1px">FILES SCANNED</div>
+                <div style="font-size:44px;font-weight:600;line-height:52px;margin-top:auto;color:#E8EBF5">128 540</div>
+                <div style="font-size:13px;color:#808AA8;margin-top:4px">Registry, files, processes, tasks</div>
+              </div>
+              <div style="flex:1;height:168px;background:rgba(21,26,46,0.88);border:1px solid #262C44;border-radius:12px;padding:24px;display:flex;flex-direction:column">
+                <div style="font-size:12px;font-weight:600;color:#808AA8;letter-spacing:1.1px">IN QUARANTINE</div>
+                <div style="font-size:44px;font-weight:600;line-height:52px;margin-top:auto;color:#E8EBF5">3</div>
+                <div style="font-size:13px;color:#808AA8;margin-top:4px">12.4 MB isolated on disk</div>
+              </div>
+            </div>
+            <div style="flex:1;min-height:0"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:14px">
+        <span style="font-size:12px;font-weight:600;color:#7FA6FF;letter-spacing:1.1px">02 — SCAN</span>
+        <span style="font-size:13px;color:#808AA8">Progress reads from four metres deep: stage name, percent, bar, live counters.</span>
+      </div>
+      <div data-screen-label="02 Scan" style="width:1280px;height:800px;border-radius:8px;overflow:hidden;border:1px solid #232A44;display:flex;background-color:#0A0D18;background-image:radial-gradient(48% 48% at 10% 4%,rgba(62,47,158,0.647) 0%,rgba(62,47,158,0.356) 40%,rgba(62,47,158,0.129) 70%,rgba(62,47,158,0) 100%),radial-gradient(42% 42% at 82% 2%,rgba(29,90,168,0.471) 0%,rgba(29,90,168,0.259) 40%,rgba(29,90,168,0.094) 70%,rgba(29,90,168,0) 100%),radial-gradient(55% 55% at 96% 96%,rgba(42,47,122,0.412) 0%,rgba(42,47,122,0.227) 40%,rgba(42,47,122,0.082) 70%,rgba(42,47,122,0) 100%),radial-gradient(45% 45% at 26% 88%,rgba(20,69,110,0.314) 0%,rgba(20,69,110,0.173) 40%,rgba(20,69,110,0.063) 70%,rgba(20,69,110,0) 100%)">
+        <dc-import name="ThreatSidebar" active="scan" hint-size="216px,100%"></dc-import>
+        <div style="flex:1;display:flex;flex-direction:column;min-width:0">
+          <dc-import name="ThreatTitlebar" page="Scan" hint-size="100%,56px"></dc-import>
+          <div style="flex:1;padding:24px 28px 28px;display:flex;flex-direction:column;min-height:0">
+            <div style="font-size:20px;font-weight:600;line-height:26px">Scan</div>
+            <div style="font-size:14px;line-height:20px;color:#A2AAC4;margin-top:8px">Full check of registry keys, files, running processes, network connections and scheduled tasks.</div>
+            <div style="margin-top:24px;flex:none;background:rgba(21,26,46,0.88);border:1px solid #262C44;border-radius:16px;padding:28px 32px">
+              <div style="font-size:12px;font-weight:600;color:#808AA8;letter-spacing:1.1px">STATUS</div>
+              <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:32px;margin-top:16px">
+                <div style="min-width:0">
+                  <div style="font-size:20px;font-weight:600;line-height:26px;color:#E8EBF5">Scanning registry autoruns</div>
+                  <div style="font-size:13px;color:#808AA8;margin-top:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:640px">HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run — stage 2 of 5 · 18 420 of 128 540 objects</div>
+                </div>
+                <div style="font-size:44px;font-weight:600;line-height:46px;color:#E8EBF5;flex:none">47<span style="font-size:20px;color:#808AA8">%</span></div>
+              </div>
+              <div style="margin-top:20px;height:8px;border-radius:4px;background:#101426;border:1px solid #262C44;overflow:hidden">
+                <div style="width:47%;height:100%;border-radius:4px;background:linear-gradient(90deg,#3E6FD9,#6E8CF0)"></div>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-top:24px">
+                <div style="font-size:13px;color:#808AA8">Elapsed 01:12 · about 01:20 left</div>
+                <div style="height:40px;padding:0 20px;border-radius:8px;background:#1B2136;border:1px solid #626C92;color:#E8EBF5;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px" style-hover="background:#222A46;border-color:#7D89B4" style-active="background:#151A2E">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6.4 6.4 17.6 17.6M17.6 6.4 6.4 17.6"></path></svg>
+                  <span>Cancel</span>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;gap:16px;margin-top:24px;flex:none">
+              <div style="flex:1;height:140px;background:rgba(21,26,46,0.88);border:1px solid #262C44;border-radius:12px;padding:24px;display:flex;flex-direction:column">
+                <div style="font-size:12px;font-weight:600;color:#808AA8;letter-spacing:1.1px">THREATS FOUND</div>
+                <div style="display:flex;align-items:flex-end;gap:12px;margin-top:auto">
+                  <div style="font-size:44px;font-weight:600;line-height:46px;color:#FF9A52">4</div>
+                  <div style="font-size:13px;color:#808AA8;padding-bottom:4px">so far in this scan</div>
+                </div>
+              </div>
+              <div style="flex:1;height:140px;background:rgba(21,26,46,0.88);border:1px solid #262C44;border-radius:12px;padding:24px;display:flex;flex-direction:column">
+                <div style="font-size:12px;font-weight:600;color:#808AA8;letter-spacing:1.1px">CRITICAL</div>
+                <div style="display:flex;align-items:flex-end;gap:12px;margin-top:auto">
+                  <div style="font-size:44px;font-weight:600;line-height:46px;color:#FF6A78">1</div>
+                  <div style="font-size:13px;color:#808AA8;padding-bottom:4px">needs action after the scan</div>
+                </div>
+              </div>
+            </div>
+            <div style="flex:1;min-height:0"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:14px">
+        <span style="font-size:12px;font-weight:600;color:#7FA6FF;letter-spacing:1.1px">03 — THREATS</span>
+        <span style="font-size:13px;color:#808AA8">Dense table, 40px rows. Severity is a pill (colour + word); every state in the table is also a word.</span>
+      </div>
+      <div data-screen-label="03 Threats" style="width:1280px;height:800px;border-radius:8px;overflow:hidden;border:1px solid #232A44;display:flex;background-color:#0A0D18;background-image:radial-gradient(48% 48% at 10% 4%,rgba(62,47,158,0.647) 0%,rgba(62,47,158,0.356) 40%,rgba(62,47,158,0.129) 70%,rgba(62,47,158,0) 100%),radial-gradient(42% 42% at 82% 2%,rgba(29,90,168,0.471) 0%,rgba(29,90,168,0.259) 40%,rgba(29,90,168,0.094) 70%,rgba(29,90,168,0) 100%),radial-gradient(55% 55% at 96% 96%,rgba(42,47,122,0.412) 0%,rgba(42,47,122,0.227) 40%,rgba(42,47,122,0.082) 70%,rgba(42,47,122,0) 100%),radial-gradient(45% 45% at 26% 88%,rgba(20,69,110,0.314) 0%,rgba(20,69,110,0.173) 40%,rgba(20,69,110,0.063) 70%,rgba(20,69,110,0) 100%)">
+        <dc-import name="ThreatSidebar" active="threats" hint-size="216px,100%"></dc-import>
+        <div style="flex:1;display:flex;flex-direction:column;min-width:0">
+          <dc-import name="ThreatTitlebar" page="Threats" hint-size="100%,56px"></dc-import>
+          <div style="flex:1;padding:24px 28px 28px;display:flex;flex-direction:column;min-height:0">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex:none">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="font-size:20px;font-weight:600;line-height:26px">Threats</span>
+                <span style="min-width:24px;height:24px;padding:0 8px;border-radius:6px;background:#3A1420;border:1px solid #7A2434;color:#FF6A78;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center">7</span>
+              </div>
+              <div style="display:flex;gap:8px">
+                <div style="height:32px;padding:0 16px;border-radius:8px;background:#1B2136;border:1px solid #626C92;color:#E8EBF5;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px" style-hover="background:#222A46;border-color:#7D89B4" style-active="background:#151A2E">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 4.6v4.4h-4.4"></path><path d="M19.5 12A7.5 7.5 0 1 1 17.3 6.7"></path></svg>
+                  <span>Check all on VirusTotal</span>
+                </div>
+                <div style="height:32px;padding:0 16px;border-radius:8px;background:#3E6FD9;border:1px solid transparent;color:#FFFFFF;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;box-shadow:0 3px 14px rgba(11,27,71,0.47)" style-hover="background:#4C7DEA" style-active="background:#3260C0">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.4 12 4.4l8 4v7.2L12 19.6 4 15.6V8.4Z"></path><path d="M4 8.4 12 12.4l8-4"></path><path d="M12 12.4v7.2"></path></svg>
+                  <span>Quarantine all critical</span>
+                </div>
+              </div>
+            </div>
+            <div style="margin-top:20px;flex:1;min-height:0;background:rgba(21,26,46,0.88);border:1px solid #262C44;border-radius:12px;overflow:hidden">
+              <table style="width:100%;border-collapse:collapse;table-layout:fixed;font-size:14px">
+                <thead>
+                  <tr style="height:40px;background:#101426">
+                    <th style="text-align:left;padding:0 16px;font-size:12px;font-weight:600;color:#808AA8;letter-spacing:0.8px;border-bottom:1px solid #262C44;width:88px">SEVERITY</th>
+                    <th style="text-align:left;padding:0 16px;font-size:12px;font-weight:600;color:#808AA8;letter-spacing:0.8px;border-bottom:1px solid #262C44;width:260px">NAME</th>
+                    <th style="text-align:left;padding:0 16px;font-size:12px;font-weight:600;color:#808AA8;letter-spacing:0.8px;border-bottom:1px solid #262C44;width:216px">SOURCE</th>
+                    <th style="text-align:left;padding:0 16px;font-size:12px;font-weight:600;color:#808AA8;letter-spacing:0.8px;border-bottom:1px solid #262C44;width:112px">VIRUSTOTAL</th>
+                    <th style="text-align:left;padding:0 16px;font-size:12px;font-weight:600;color:#808AA8;letter-spacing:0.8px;border-bottom:1px solid #262C44;width:108px">STATUS</th>
+                    <th style="text-align:left;padding:0 16px;font-size:12px;font-weight:600;color:#808AA8;letter-spacing:0.8px;border-bottom:1px solid #262C44;width:216px">ACTIONS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr style="height:40px" style-hover="background:#171D33">
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338"><span style="display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:6px;background:#3A1420;border:1px solid #7A2434;color:#FF6A78;font-size:12px;font-weight:600;letter-spacing:0.4px">CRIT</span></td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338;color:#E8EBF5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Trojan:Win32/Wacatac.B!ml</td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338;color:#A2AAC4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">C:\Users\Public\svc-host.exe</td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338;color:#E8EBF5">58<span style="color:#808AA8"> / 70</span></td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338"><span style="display:inline-flex;align-items:center;gap:8px;color:#A2AAC4;font-size:13px"><span style="width:6px;height:6px;border-radius:3px;background:#A2AAC4"></span>Pending</span></td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338">
+                      <div style="display:flex;gap:8px">
+                        <div style="height:28px;padding:0 8px;border-radius:6px;background:#1B2136;border:1px solid #626C92;color:#D5DCEE;font-size:12px;font-weight:500;display:flex;align-items:center" style-hover="background:#222A46;border-color:#7D89B4" style-active="background:#151A2E">Quarantine</div>
+                        <div style="height:28px;padding:0 8px;border-radius:6px;background:#1B2136;border:1px solid #626C92;color:#D5DCEE;font-size:12px;font-weight:500;display:flex;align-items:center" style-hover="background:#222A46;border-color:#7D89B4" style-active="background:#151A2E">Delete</div>
+                        <div style="height:28px;padding:0 8px;border-radius:6px;background:#1B2136;border:1px solid #626C92;color:#D5DCEE;font-size:12px;font-weight:500;display:flex;align-items:center" style-hover="background:#222A46;border-color:#7D89B4" style-active="background:#151A2E">Ignore</div>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr style="height:40px" style-hover="background:#171D33">
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338"><span style="display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:6px;background:#3A1420;border:1px solid #7A2434;color:#FF6A78;font-size:12px;font-weight:600;letter-spacing:0.4px">CRIT</span></td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338;color:#E8EBF5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Backdoor:MSIL/Bladabindi</td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338;color:#A2AAC4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">HKCU\…\CurrentVersion\Run\WinUpdate</td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338;color:#E8EBF5">41<span style="color:#808AA8"> / 70</span></td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338"><span style="display:inline-flex;align-items:center;gap:8px;color:#58D6A6;font-size:13px"><span style="width:6px;height:6px;border-radius:3px;background:#58D6A6"></span>Quarantined</span></td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338">
+                      <div style="display:flex;gap:8px">
+                        <div style="height:28px;padding:0 8px;border-radius:6px;background:#141828;border:1px solid #2A3150;color:#5A6280;font-size:12px;font-weight:500;display:flex;align-items:center">Remove</div>
+                        <div style="height:28px;padding:0 8px;border-radius:6px;background:#141828;border:1px solid #2A3150;color:#5A6280;font-size:12px;font-weight:500;display:flex;align-items:center">Delete</div>
+                        <div style="height:28px;padding:0 8px;border-radius:6px;background:#141828;border:1px solid #2A3150;color:#5A6280;font-size:12px;font-weight:500;display:flex;align-items:center">Ignore</div>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr style="height:40px" style-hover="background:#171D33">
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338"><span style="display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:6px;background:#3A2413;border:1px solid #7A4A22;color:#FF9A52;font-size:12px;font-weight:600;letter-spacing:0.4px">HIGH</span></td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338;color:#E8EBF5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Trojan:PowerShell/Downloader.GA</td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338;color:#A2AAC4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Task Scheduler\SysCleanup</td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338;color:#A2AAC4">Checking…</td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338"><span style="display:inline-flex;align-items:center;gap:8px;color:#A2AAC4;font-size:13px"><span style="width:6px;height:6px;border-radius:3px;background:#A2AAC4"></span>Pending</span></td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338">
+                      <div style="display:flex;gap:8px">
+                        <div style="height:28px;padding:0 8px;border-radius:6px;background:#1B2136;border:1px solid #626C92;color:#D5DCEE;font-size:12px;font-weight:500;display:flex;align-items:center" style-hover="background:#222A46;border-color:#7D89B4" style-active="background:#151A2E">Quarantine</div>
+                        <div style="height:28px;padding:0 8px;border-radius:6px;background:#1B2136;border:1px solid #626C92;color:#D5DCEE;font-size:12px;font-weight:500;display:flex;align-items:center" style-hover="background:#222A46;border-color:#7D89B4" style-active="background:#151A2E">Delete</div>
+                        <div style="height:28px;padding:0 8px;border-radius:6px;background:#1B2136;border:1px solid #626C92;color:#D5DCEE;font-size:12px;font-weight:500;display:flex;align-items:center" style-hover="background:#222A46;border-color:#7D89B4" style-active="background:#151A2E">Ignore</div>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr style="height:40px" style-hover="background:#171D33">
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338"><span style="display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:6px;background:#3A2413;border:1px solid #7A4A22;color:#FF9A52;font-size:12px;font-weight:600;letter-spacing:0.4px">HIGH</span></td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338;color:#E8EBF5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">PUA:Win32/Adposhel</td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338;color:#A2AAC4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">C:\ProgramData\upd\adp.dll</td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338;color:#FF6A78">Error</td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338"><span style="display:inline-flex;align-items:center;gap:8px;color:#FF6A78;font-size:13px"><span style="width:6px;height:6px;border-radius:3px;background:#FF6A78"></span>Failed</span></td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338">
+                      <div style="display:flex;gap:8px">
+                        <div style="height:28px;padding:0 8px;border-radius:6px;background:#1B2136;border:1px solid #626C92;color:#D5DCEE;font-size:12px;font-weight:500;display:flex;align-items:center" style-hover="background:#222A46;border-color:#7D89B4" style-active="background:#151A2E">Quarantine</div>
+                        <div style="height:28px;padding:0 8px;border-radius:6px;background:#1B2136;border:1px solid #626C92;color:#D5DCEE;font-size:12px;font-weight:500;display:flex;align-items:center" style-hover="background:#222A46;border-color:#7D89B4" style-active="background:#151A2E">Delete</div>
+                        <div style="height:28px;padding:0 8px;border-radius:6px;background:#1B2136;border:1px solid #626C92;color:#D5DCEE;font-size:12px;font-weight:500;display:flex;align-items:center" style-hover="background:#222A46;border-color:#7D89B4" style-active="background:#151A2E">Ignore</div>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr style="height:40px" style-hover="background:#171D33">
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338"><span style="display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:6px;background:#362C10;border:1px solid #6E5A22;color:#FFCB57;font-size:12px;font-weight:600;letter-spacing:0.4px">MED</span></td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338;color:#E8EBF5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Suspicious outbound connection</td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338;color:#A2AAC4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">185.203.116.42:8443 · svchost.exe</td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338;color:#808AA8">Unknown</td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338"><span style="display:inline-flex;align-items:center;gap:8px;color:#808AA8;font-size:13px"><span style="width:6px;height:6px;border-radius:3px;background:#808AA8"></span>Ignored</span></td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338">
+                      <div style="display:flex;gap:8px">
+                        <div style="height:28px;padding:0 8px;border-radius:6px;background:#141828;border:1px solid #2A3150;color:#5A6280;font-size:12px;font-weight:500;display:flex;align-items:center">Quarantine</div>
+                        <div style="height:28px;padding:0 8px;border-radius:6px;background:#141828;border:1px solid #2A3150;color:#5A6280;font-size:12px;font-weight:500;display:flex;align-items:center">Delete</div>
+                        <div style="height:28px;padding:0 8px;border-radius:6px;background:#141828;border:1px solid #2A3150;color:#5A6280;font-size:12px;font-weight:500;display:flex;align-items:center">Ignore</div>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr style="height:40px" style-hover="background:#171D33">
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338"><span style="display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:6px;background:#1B2136;border:1px solid #333C5C;color:#9FB0D6;font-size:12px;font-weight:600;letter-spacing:0.4px">LOW</span></td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338;color:#E8EBF5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Modified hosts file</td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338;color:#A2AAC4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">C:\Windows\System32\drivers\etc\hosts</td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338;color:#808AA8">Not checked</td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338"><span style="display:inline-flex;align-items:center;gap:8px;color:#A2AAC4;font-size:13px"><span style="width:6px;height:6px;border-radius:3px;background:#A2AAC4"></span>Pending</span></td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338">
+                      <div style="display:flex;gap:8px">
+                        <div style="height:28px;padding:0 8px;border-radius:6px;background:#1B2136;border:1px solid #626C92;color:#D5DCEE;font-size:12px;font-weight:500;display:flex;align-items:center" style-hover="background:#222A46;border-color:#7D89B4" style-active="background:#151A2E">Quarantine</div>
+                        <div style="height:28px;padding:0 8px;border-radius:6px;background:#1B2136;border:1px solid #626C92;color:#D5DCEE;font-size:12px;font-weight:500;display:flex;align-items:center" style-hover="background:#222A46;border-color:#7D89B4" style-active="background:#151A2E">Delete</div>
+                        <div style="height:28px;padding:0 8px;border-radius:6px;background:#1B2136;border:1px solid #626C92;color:#D5DCEE;font-size:12px;font-weight:500;display:flex;align-items:center" style-hover="background:#222A46;border-color:#7D89B4" style-active="background:#151A2E">Ignore</div>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr style="height:40px" style-hover="background:#171D33">
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338"><span style="display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:6px;background:#161A29;border:1px solid #2A3148;color:#7C86A6;font-size:12px;font-weight:600;letter-spacing:0.4px">INFO</span></td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338;color:#E8EBF5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Unsigned autorun entry</td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338;color:#A2AAC4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">HKLM\…\CurrentVersion\Run\OEMTool</td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338;color:#5A6280">—</td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338"><span style="display:inline-flex;align-items:center;gap:8px;color:#808AA8;font-size:13px"><span style="width:6px;height:6px;border-radius:3px;background:#808AA8"></span>Deleted</span></td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338">
+                      <div style="display:flex;gap:8px">
+                        <div style="height:28px;padding:0 8px;border-radius:6px;background:#141828;border:1px solid #2A3150;color:#5A6280;font-size:12px;font-weight:500;display:flex;align-items:center">Quarantine</div>
+                        <div style="height:28px;padding:0 8px;border-radius:6px;background:#141828;border:1px solid #2A3150;color:#5A6280;font-size:12px;font-weight:500;display:flex;align-items:center">Delete</div>
+                        <div style="height:28px;padding:0 8px;border-radius:6px;background:#141828;border:1px solid #2A3150;color:#5A6280;font-size:12px;font-weight:500;display:flex;align-items:center">Ignore</div>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:14px">
+        <span style="font-size:12px;font-weight:600;color:#7FA6FF;letter-spacing:1.1px">04 — QUARANTINE</span>
+        <span style="font-size:13px;color:#808AA8">Same table system, seven columns. Restore is the primary row action, Delete the irreversible one.</span>
+      </div>
+      <div data-screen-label="04 Quarantine" style="width:1280px;height:800px;border-radius:8px;overflow:hidden;border:1px solid #232A44;display:flex;background-color:#0A0D18;background-image:radial-gradient(48% 48% at 10% 4%,rgba(62,47,158,0.647) 0%,rgba(62,47,158,0.356) 40%,rgba(62,47,158,0.129) 70%,rgba(62,47,158,0) 100%),radial-gradient(42% 42% at 82% 2%,rgba(29,90,168,0.471) 0%,rgba(29,90,168,0.259) 40%,rgba(29,90,168,0.094) 70%,rgba(29,90,168,0) 100%),radial-gradient(55% 55% at 96% 96%,rgba(42,47,122,0.412) 0%,rgba(42,47,122,0.227) 40%,rgba(42,47,122,0.082) 70%,rgba(42,47,122,0) 100%),radial-gradient(45% 45% at 26% 88%,rgba(20,69,110,0.314) 0%,rgba(20,69,110,0.173) 40%,rgba(20,69,110,0.063) 70%,rgba(20,69,110,0) 100%)">
+        <dc-import name="ThreatSidebar" active="quarantine" hint-size="216px,100%"></dc-import>
+        <div style="flex:1;display:flex;flex-direction:column;min-width:0">
+          <dc-import name="ThreatTitlebar" page="Quarantine" hint-size="100%,56px"></dc-import>
+          <div style="flex:1;padding:24px 28px 28px;display:flex;flex-direction:column;min-height:0">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex:none">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="font-size:20px;font-weight:600;line-height:26px">Quarantine</span>
+                <span style="min-width:24px;height:24px;padding:0 8px;border-radius:6px;background:#1B2136;border:1px solid #333C5C;color:#9FB0D6;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center">3</span>
+              </div>
+              <div style="display:flex;gap:8px">
+                <div style="height:32px;padding:0 16px;border-radius:8px;background:#1B2136;border:1px solid #626C92;color:#E8EBF5;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px" style-hover="background:#222A46;border-color:#7D89B4" style-active="background:#151A2E">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3.8 7.2c0-1 .8-1.8 1.8-1.8h3.1l2 2.4h7.7c1 0 1.8.8 1.8 1.8v7.4c0 1-.8 1.8-1.8 1.8H5.6c-1 0-1.8-.8-1.8-1.8V7.2Z"></path></svg>
+                  <span>Open folder</span>
+                </div>
+                <div style="height:32px;padding:0 16px;border-radius:8px;background:#1B2136;border:1px solid #626C92;color:#E8EBF5;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px" style-hover="background:#222A46;border-color:#7D89B4" style-active="background:#151A2E">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 4.6v4.4h-4.4"></path><path d="M19.5 12A7.5 7.5 0 1 1 17.3 6.7"></path></svg>
+                  <span>Refresh</span>
+                </div>
+              </div>
+            </div>
+            <div style="margin-top:20px;flex:1;min-height:0;background:rgba(21,26,46,0.88);border:1px solid #262C44;border-radius:12px;overflow:hidden">
+              <table style="width:100%;border-collapse:collapse;table-layout:fixed;font-size:14px">
+                <thead>
+                  <tr style="height:40px;background:#101426">
+                    <th style="text-align:left;padding:0 16px;font-size:12px;font-weight:600;color:#808AA8;letter-spacing:0.8px;border-bottom:1px solid #262C44;width:192px">FILE</th>
+                    <th style="text-align:left;padding:0 16px;font-size:12px;font-weight:600;color:#808AA8;letter-spacing:0.8px;border-bottom:1px solid #262C44;width:176px">THREAT</th>
+                    <th style="text-align:left;padding:0 16px;font-size:12px;font-weight:600;color:#808AA8;letter-spacing:0.8px;border-bottom:1px solid #262C44;width:84px">SEVERITY</th>
+                    <th style="text-align:left;padding:0 16px;font-size:12px;font-weight:600;color:#808AA8;letter-spacing:0.8px;border-bottom:1px solid #262C44;width:172px">ORIGINAL LOCATION</th>
+                    <th style="text-align:left;padding:0 16px;font-size:12px;font-weight:600;color:#808AA8;letter-spacing:0.8px;border-bottom:1px solid #262C44;width:120px">QUARANTINED</th>
+                    <th style="text-align:left;padding:0 16px;font-size:12px;font-weight:600;color:#808AA8;letter-spacing:0.8px;border-bottom:1px solid #262C44;width:72px">SIZE</th>
+                    <th style="text-align:left;padding:0 16px;font-size:12px;font-weight:600;color:#808AA8;letter-spacing:0.8px;border-bottom:1px solid #262C44;width:184px">ACTIONS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr style="height:40px" style-hover="background:#171D33">
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338;color:#E8EBF5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">svc-host.exe</td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338;color:#A2AAC4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Trojan:Win32/Wacatac</td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338"><span style="display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:6px;background:#3A1420;border:1px solid #7A2434;color:#FF6A78;font-size:12px;font-weight:600;letter-spacing:0.4px">CRIT</span></td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338;color:#A2AAC4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">C:\Users\Public\</td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338;color:#A2AAC4">14:33 today</td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338;color:#A2AAC4">8.2 MB</td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338">
+                      <div style="display:flex;gap:8px">
+                        <div style="height:28px;padding:0 8px;border-radius:6px;background:#1B2136;border:1px solid #626C92;color:#D5DCEE;font-size:12px;font-weight:500;display:flex;align-items:center;gap:8px" style-hover="background:#222A46;border-color:#7D89B4" style-active="background:#151A2E"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.6v4.4h4.4"></path><path d="M4.5 12A7.5 7.5 0 1 0 6.7 6.7"></path></svg>Restore</div>
+                        <div style="height:28px;padding:0 8px;border-radius:6px;background:#1B2136;border:1px solid #626C92;color:#D5DCEE;font-size:12px;font-weight:500;display:flex;align-items:center;gap:8px" style-hover="background:#222A46;border-color:#7D89B4" style-active="background:#151A2E"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.8 7.4h14.4"></path><path d="M9.4 7.4V5.2h5.2v2.2"></path><path d="M6.8 7.4l.8 12c0 .8.7 1.4 1.5 1.4h5.8c.8 0 1.5-.6 1.5-1.4l.8-12"></path></svg>Delete</div>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr style="height:40px" style-hover="background:#171D33">
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338;color:#E8EBF5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">winupdate.vbs</td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338;color:#A2AAC4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Backdoor:MSIL/Bladabindi</td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338"><span style="display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:6px;background:#3A1420;border:1px solid #7A2434;color:#FF6A78;font-size:12px;font-weight:600;letter-spacing:0.4px">CRIT</span></td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338;color:#A2AAC4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">C:\Users\ilya\AppData\Roaming\</td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338;color:#A2AAC4">14:33 today</td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338;color:#A2AAC4">14 KB</td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338">
+                      <div style="display:flex;gap:8px">
+                        <div style="height:28px;padding:0 8px;border-radius:6px;background:#1B2136;border:1px solid #626C92;color:#D5DCEE;font-size:12px;font-weight:500;display:flex;align-items:center;gap:8px" style-hover="background:#222A46;border-color:#7D89B4" style-active="background:#151A2E"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.6v4.4h4.4"></path><path d="M4.5 12A7.5 7.5 0 1 0 6.7 6.7"></path></svg>Restore</div>
+                        <div style="height:28px;padding:0 8px;border-radius:6px;background:#1B2136;border:1px solid #626C92;color:#D5DCEE;font-size:12px;font-weight:500;display:flex;align-items:center;gap:8px" style-hover="background:#222A46;border-color:#7D89B4" style-active="background:#151A2E"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.8 7.4h14.4"></path><path d="M9.4 7.4V5.2h5.2v2.2"></path><path d="M6.8 7.4l.8 12c0 .8.7 1.4 1.5 1.4h5.8c.8 0 1.5-.6 1.5-1.4l.8-12"></path></svg>Delete</div>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr style="height:40px" style-hover="background:#171D33">
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338;color:#E8EBF5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">adp.dll</td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338;color:#A2AAC4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">PUA:Win32/Adposhel</td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338"><span style="display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:6px;background:#3A2413;border:1px solid #7A4A22;color:#FF9A52;font-size:12px;font-weight:600;letter-spacing:0.4px">HIGH</span></td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338;color:#A2AAC4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">C:\ProgramData\upd\</td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338;color:#A2AAC4">11:04 today</td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338;color:#A2AAC4">4.1 MB</td>
+                    <td style="padding:0 16px;border-bottom:1px solid #1D2338">
+                      <div style="display:flex;gap:8px">
+                        <div style="height:28px;padding:0 8px;border-radius:6px;background:#1B2136;border:1px solid #626C92;color:#D5DCEE;font-size:12px;font-weight:500;display:flex;align-items:center;gap:8px" style-hover="background:#222A46;border-color:#7D89B4" style-active="background:#151A2E"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.6v4.4h4.4"></path><path d="M4.5 12A7.5 7.5 0 1 0 6.7 6.7"></path></svg>Restore</div>
+                        <div style="height:28px;padding:0 8px;border-radius:6px;background:#1B2136;border:1px solid #626C92;color:#D5DCEE;font-size:12px;font-weight:500;display:flex;align-items:center;gap:8px" style-hover="background:#222A46;border-color:#7D89B4" style-active="background:#151A2E"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.8 7.4h14.4"></path><path d="M9.4 7.4V5.2h5.2v2.2"></path><path d="M6.8 7.4l.8 12c0 .8.7 1.4 1.5 1.4h5.8c.8 0 1.5-.6 1.5-1.4l.8-12"></path></svg>Delete</div>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:14px">
+        <span style="font-size:12px;font-weight:600;color:#7FA6FF;letter-spacing:1.1px">05 — LOGS</span>
+        <span style="font-size:13px;color:#808AA8">Cascadia Mono console, fixed 22px line grid, level badge before the message.</span>
+      </div>
+      <div data-screen-label="05 Logs" style="width:1280px;height:800px;border-radius:8px;overflow:hidden;border:1px solid #232A44;display:flex;background-color:#0A0D18;background-image:radial-gradient(48% 48% at 10% 4%,rgba(62,47,158,0.647) 0%,rgba(62,47,158,0.356) 40%,rgba(62,47,158,0.129) 70%,rgba(62,47,158,0) 100%),radial-gradient(42% 42% at 82% 2%,rgba(29,90,168,0.471) 0%,rgba(29,90,168,0.259) 40%,rgba(29,90,168,0.094) 70%,rgba(29,90,168,0) 100%),radial-gradient(55% 55% at 96% 96%,rgba(42,47,122,0.412) 0%,rgba(42,47,122,0.227) 40%,rgba(42,47,122,0.082) 70%,rgba(42,47,122,0) 100%),radial-gradient(45% 45% at 26% 88%,rgba(20,69,110,0.314) 0%,rgba(20,69,110,0.173) 40%,rgba(20,69,110,0.063) 70%,rgba(20,69,110,0) 100%)">
+        <dc-import name="ThreatSidebar" active="logs" hint-size="216px,100%"></dc-import>
+        <div style="flex:1;display:flex;flex-direction:column;min-width:0">
+          <dc-import name="ThreatTitlebar" page="Logs" hint-size="100%,56px"></dc-import>
+          <div style="flex:1;padding:24px 28px 28px;display:flex;flex-direction:column;min-height:0">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex:none">
+              <span style="font-size:20px;font-weight:600;line-height:26px">Logs</span>
+              <div style="height:32px;padding:0 16px;border-radius:8px;background:#1B2136;border:1px solid #626C92;color:#E8EBF5;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px" style-hover="background:#222A46;border-color:#7D89B4" style-active="background:#151A2E">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4.8 7.4h14.4"></path><path d="M9.4 7.4V5.2h5.2v2.2"></path><path d="M6.8 7.4l.8 12c0 .8.7 1.4 1.5 1.4h5.8c.8 0 1.5-.6 1.5-1.4l.8-12"></path></svg>
+                <span>Clear log</span>
+              </div>
+            </div>
+            <div data-console="true" style="margin-top:20px;flex:1;min-height:0;background:#0D1120;border:1px solid #262C44;border-radius:12px;padding:16px 8px 16px 16px;overflow-y:scroll;font-family:'Cascadia Mono',Consolas,monospace;font-size:13px;line-height:22px;color:#C7D0E6">
+              <div style="display:flex;align-items:center;gap:12px;height:22px"><span style="color:#6E7794;flex:none">14:32:01</span><span style="flex:none;width:40px;height:20px;border-radius:4px;background:#1B2136;border:1px solid #333C5C;color:#9FB0D6;font-family:'Segoe UI Variable Display','Segoe UI',sans-serif;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center">INF</span><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Scan started — profile: full (registry, files, processes, network, tasks)</span></div>
+              <div style="display:flex;align-items:center;gap:12px;height:22px"><span style="color:#6E7794;flex:none">14:32:01</span><span style="flex:none;width:40px;height:20px;border-radius:4px;background:#161A29;border:1px solid #2A3148;color:#808AA8;font-family:'Segoe UI Variable Display','Segoe UI',sans-serif;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center">DBG</span><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Signature database revision 2026.07.28, 1 284 rules loaded in 38 ms</span></div>
+              <div style="display:flex;align-items:center;gap:12px;height:22px"><span style="color:#6E7794;flex:none">14:32:02</span><span style="flex:none;width:40px;height:20px;border-radius:4px;background:#161A29;border:1px solid #2A3148;color:#808AA8;font-family:'Segoe UI Variable Display','Segoe UI',sans-serif;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center">DBG</span><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Stage 1/5 processes: enumerating 214 PIDs, 12 without valid signature</span></div>
+              <div style="display:flex;align-items:center;gap:12px;height:22px"><span style="color:#6E7794;flex:none">14:32:07</span><span style="flex:none;width:40px;height:20px;border-radius:4px;background:#1B2136;border:1px solid #333C5C;color:#9FB0D6;font-family:'Segoe UI Variable Display','Segoe UI',sans-serif;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center">INF</span><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Stage 1/5 processes finished — 214 checked, 1 threat found</span></div>
+              <div style="display:flex;align-items:center;gap:12px;height:22px"><span style="color:#6E7794;flex:none">14:32:08</span><span style="flex:none;width:40px;height:20px;border-radius:4px;background:#362C10;border:1px solid #6E5A22;color:#FFCB57;font-family:'Segoe UI Variable Display','Segoe UI',sans-serif;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center">WRN</span><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">svchost.exe (PID 4188) keeps an outbound connection to 185.203.116.42:8443</span></div>
+              <div style="display:flex;align-items:center;gap:12px;height:22px"><span style="color:#6E7794;flex:none">14:32:11</span><span style="flex:none;width:40px;height:20px;border-radius:4px;background:#1B2136;border:1px solid #333C5C;color:#9FB0D6;font-family:'Segoe UI Variable Display','Segoe UI',sans-serif;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center">INF</span><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Stage 2/5 registry: 18 420 of 42 100 keys checked</span></div>
+              <div style="display:flex;align-items:center;gap:12px;height:22px"><span style="color:#6E7794;flex:none">14:32:14</span><span style="flex:none;width:40px;height:20px;border-radius:4px;background:#362C10;border:1px solid #6E5A22;color:#FFCB57;font-family:'Segoe UI Variable Display','Segoe UI',sans-serif;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center">WRN</span><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Autorun HKCU\…\Run\WinUpdate points to a script in AppData\Roaming</span></div>
+              <div style="display:flex;align-items:center;gap:12px;height:22px"><span style="color:#6E7794;flex:none">14:32:14</span><span style="flex:none;width:40px;height:20px;border-radius:4px;background:#3A1420;border:1px solid #7A2434;color:#FF6A78;font-family:'Segoe UI Variable Display','Segoe UI',sans-serif;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center">ERR</span><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Backdoor:MSIL/Bladabindi detected in HKCU\…\Run\WinUpdate</span></div>
+              <div style="display:flex;align-items:center;gap:12px;height:22px"><span style="color:#6E7794;flex:none">14:32:19</span><span style="flex:none;width:40px;height:20px;border-radius:4px;background:#161A29;border:1px solid #2A3148;color:#808AA8;font-family:'Segoe UI Variable Display','Segoe UI',sans-serif;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center">DBG</span><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">SHA-256 d41f8cd9…7e2b queued for VirusTotal lookup (2 in queue)</span></div>
+              <div style="display:flex;align-items:center;gap:12px;height:22px"><span style="color:#6E7794;flex:none">14:32:22</span><span style="flex:none;width:40px;height:20px;border-radius:4px;background:#1B2136;border:1px solid #333C5C;color:#9FB0D6;font-family:'Segoe UI Variable Display','Segoe UI',sans-serif;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center">INF</span><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">VirusTotal: 58 / 70 engines flag C:\Users\Public\svc-host.exe</span></div>
+              <div style="display:flex;align-items:center;gap:12px;height:22px"><span style="color:#6E7794;flex:none">14:32:41</span><span style="flex:none;width:40px;height:20px;border-radius:4px;background:#1B2136;border:1px solid #333C5C;color:#9FB0D6;font-family:'Segoe UI Variable Display','Segoe UI',sans-serif;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center">INF</span><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Stage 3/5 files: 96 200 objects checked, 3 threats found</span></div>
+              <div style="display:flex;align-items:center;gap:12px;height:22px"><span style="color:#6E7794;flex:none">14:32:55</span><span style="flex:none;width:40px;height:20px;border-radius:4px;background:#3A1420;border:1px solid #7A2434;color:#FF6A78;font-family:'Segoe UI Variable Display','Segoe UI',sans-serif;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center">ERR</span><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">VirusTotal: request failed (HTTP 429, rate limit) — retry in 15 s</span></div>
+              <div style="display:flex;align-items:center;gap:12px;height:22px"><span style="color:#6E7794;flex:none">14:33:02</span><span style="flex:none;width:40px;height:20px;border-radius:4px;background:#161A29;border:1px solid #2A3148;color:#808AA8;font-family:'Segoe UI Variable Display','Segoe UI',sans-serif;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center">DBG</span><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Stage 4/5 tasks: 128 scheduled tasks parsed from \Microsoft\Windows</span></div>
+              <div style="display:flex;align-items:center;gap:12px;height:22px"><span style="color:#6E7794;flex:none">14:33:06</span><span style="flex:none;width:40px;height:20px;border-radius:4px;background:#362C10;border:1px solid #6E5A22;color:#FFCB57;font-family:'Segoe UI Variable Display','Segoe UI',sans-serif;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center">WRN</span><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Task SysCleanup runs powershell.exe -enc, execution policy bypassed</span></div>
+              <div style="display:flex;align-items:center;gap:12px;height:22px"><span style="color:#6E7794;flex:none">14:33:19</span><span style="flex:none;width:40px;height:20px;border-radius:4px;background:#1B2136;border:1px solid #333C5C;color:#9FB0D6;font-family:'Segoe UI Variable Display','Segoe UI',sans-serif;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center">INF</span><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Stage 5/5 network: 41 connections checked, 1 suspicious endpoint</span></div>
+              <div style="display:flex;align-items:center;gap:12px;height:22px"><span style="color:#6E7794;flex:none">14:33:24</span><span style="flex:none;width:40px;height:20px;border-radius:4px;background:#1B2136;border:1px solid #333C5C;color:#9FB0D6;font-family:'Segoe UI Variable Display','Segoe UI',sans-serif;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center">INF</span><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Scan finished in 01:23 — 128 540 objects, 7 threats (2 critical)</span></div>
+              <div style="display:flex;align-items:center;gap:12px;height:22px"><span style="color:#6E7794;flex:none">14:33:31</span><span style="flex:none;width:40px;height:20px;border-radius:4px;background:#161A29;border:1px solid #2A3148;color:#808AA8;font-family:'Segoe UI Variable Display','Segoe UI',sans-serif;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center">DBG</span><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Auto-quarantine enabled — 2 critical items queued for isolation</span></div>
+              <div style="display:flex;align-items:center;gap:12px;height:22px"><span style="color:#6E7794;flex:none">14:33:33</span><span style="flex:none;width:40px;height:20px;border-radius:4px;background:#1B2136;border:1px solid #333C5C;color:#9FB0D6;font-family:'Segoe UI Variable Display','Segoe UI',sans-serif;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center">INF</span><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Quarantine: svc-host.exe moved to C:\ProgramData\ThreatScanner\Q</span></div>
+              <div style="display:flex;align-items:center;gap:12px;height:22px"><span style="color:#6E7794;flex:none">14:33:33</span><span style="flex:none;width:40px;height:20px;border-radius:4px;background:#1B2136;border:1px solid #333C5C;color:#9FB0D6;font-family:'Segoe UI Variable Display','Segoe UI',sans-serif;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center">INF</span><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Quarantine: winupdate.vbs isolated, autorun key removed</span></div>
+              <div style="display:flex;align-items:center;gap:12px;height:22px"><span style="color:#6E7794;flex:none">14:33:48</span><span style="flex:none;width:40px;height:20px;border-radius:4px;background:#3A1420;border:1px solid #7A2434;color:#FF6A78;font-family:'Segoe UI Variable Display','Segoe UI',sans-serif;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center">ERR</span><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">adp.dll is locked by process 6120 — quarantine failed, retry after reboot</span></div>
+              <div style="display:flex;align-items:center;gap:12px;height:22px"><span style="color:#6E7794;flex:none">14:34:02</span><span style="flex:none;width:40px;height:20px;border-radius:4px;background:#161A29;border:1px solid #2A3148;color:#808AA8;font-family:'Segoe UI Variable Display','Segoe UI',sans-serif;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center">DBG</span><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Report written to %LOCALAPPDATA%\ThreatScanner\reports\2026-08-02.json</span></div>
+              <div style="display:flex;align-items:center;gap:12px;height:22px"><span style="color:#6E7794;flex:none">14:34:02</span><span style="flex:none;width:40px;height:20px;border-radius:4px;background:#1B2136;border:1px solid #333C5C;color:#9FB0D6;font-family:'Segoe UI Variable Display','Segoe UI',sans-serif;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center">INF</span><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Idle — next scheduled scan tomorrow at 09:00</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:14px">
+        <span style="font-size:12px;font-weight:600;color:#7FA6FF;letter-spacing:1.1px">06 — SETTINGS</span>
+        <span style="font-size:13px;color:#808AA8">Setting card = name, one line of explanation, control on the right. Result lines are words, not just colour.</span>
+      </div>
+      <div data-screen-label="06 Settings" style="width:1280px;height:800px;border-radius:8px;overflow:hidden;border:1px solid #232A44;display:flex;background-color:#0A0D18;background-image:radial-gradient(48% 48% at 10% 4%,rgba(62,47,158,0.647) 0%,rgba(62,47,158,0.356) 40%,rgba(62,47,158,0.129) 70%,rgba(62,47,158,0) 100%),radial-gradient(42% 42% at 82% 2%,rgba(29,90,168,0.471) 0%,rgba(29,90,168,0.259) 40%,rgba(29,90,168,0.094) 70%,rgba(29,90,168,0) 100%),radial-gradient(55% 55% at 96% 96%,rgba(42,47,122,0.412) 0%,rgba(42,47,122,0.227) 40%,rgba(42,47,122,0.082) 70%,rgba(42,47,122,0) 100%),radial-gradient(45% 45% at 26% 88%,rgba(20,69,110,0.314) 0%,rgba(20,69,110,0.173) 40%,rgba(20,69,110,0.063) 70%,rgba(20,69,110,0) 100%)">
+        <dc-import name="ThreatSidebar" active="settings" hint-size="216px,100%"></dc-import>
+        <div style="flex:1;display:flex;flex-direction:column;min-width:0">
+          <dc-import name="ThreatTitlebar" page="Settings" hint-size="100%,56px"></dc-import>
+          <div style="flex:1;padding:24px 28px 28px;display:flex;flex-direction:column;min-height:0">
+            <div style="font-size:12px;font-weight:600;color:#808AA8;letter-spacing:1.1px;margin-bottom:12px">INTEGRATIONS</div>
+            <div style="flex:none;background:rgba(21,26,46,0.88);border:1px solid #262C44;border-radius:12px;padding:24px 28px">
+              <div style="font-size:16px;font-weight:600;color:#E8EBF5">VirusTotal API key</div>
+              <div style="font-size:13px;line-height:20px;color:#A2AAC4;margin-top:8px;max-width:720px">Used to check file hashes against 70+ engines. The key is stored in Windows Credential Manager, never in plain text. Free keys allow 4 requests per minute.</div>
+              <div style="display:flex;align-items:center;gap:12px;margin-top:20px">
+                <div style="width:420px;height:36px;border-radius:8px;background:#101426;border:1px solid #626C92;padding:0 12px;display:flex;align-items:center;font-size:14px;color:#E8EBF5;letter-spacing:2px">••••••••••••••••••••••••</div>
+                <div style="height:36px;padding:0 16px;border-radius:8px;background:#1B2136;border:1px solid #626C92;color:#E8EBF5;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px" style-hover="background:#222A46;border-color:#7D89B4" style-active="background:#151A2E">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 4.6v4.4h-4.4"></path><path d="M19.5 12A7.5 7.5 0 1 1 17.3 6.7"></path></svg>
+                  <span>Test key</span>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:16px;color:#58D6A6;font-size:13px">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.8 9.6 17.4 19 8"></path></svg>
+                <span>Key is valid — quota 4 requests/min, 500 per day, 312 left today</span>
+              </div>
+            </div>
+            <div style="font-size:12px;font-weight:600;color:#808AA8;letter-spacing:1.1px;margin:28px 0 12px">SCAN BEHAVIOR</div>
+            <div style="display:flex;flex-direction:column;gap:12px;flex:none">
+              <div style="background:rgba(21,26,46,0.88);border:1px solid #262C44;border-radius:12px;padding:20px 28px;display:flex;align-items:center;gap:32px">
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:16px;font-weight:600;color:#E8EBF5">Auto-quarantine critical threats</div>
+                  <div style="font-size:13px;line-height:20px;color:#A2AAC4;margin-top:4px">CRIT items are isolated as soon as the scan finds them, without waiting for confirmation.</div>
+                </div>
+                <div style="flex:none;display:flex;align-items:center;gap:12px">
+                  <span style="font-size:13px;font-weight:500;color:#E8EBF5">On</span>
+                  <div style="width:44px;height:24px;border-radius:12px;background:#3E6FD9;border:1px solid #3E6FD9;padding:4px;display:flex;justify-content:flex-end;align-items:center">
+                    <div style="width:16px;height:16px;border-radius:8px;background:#FFFFFF"></div>
+                  </div>
+                </div>
+              </div>
+              <div style="background:rgba(21,26,46,0.88);border:1px solid #262C44;border-radius:12px;padding:20px 28px;display:flex;align-items:center;gap:32px">
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:16px;font-weight:600;color:#E8EBF5">Check hashes on VirusTotal during the scan</div>
+                  <div style="font-size:13px;line-height:20px;color:#A2AAC4;margin-top:4px">Slower and limited by the API quota. When off, you can still check any row by hand on the Threats screen.</div>
+                </div>
+                <div style="flex:none;display:flex;align-items:center;gap:12px">
+                  <span style="font-size:13px;font-weight:500;color:#808AA8">Off</span>
+                  <div style="width:44px;height:24px;border-radius:12px;background:#1B2136;border:1px solid #626C92;padding:4px;display:flex;justify-content:flex-start;align-items:center">
+                    <div style="width:16px;height:16px;border-radius:8px;background:#808AA8"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div style="flex:1;min-height:0"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div id="tokens" style="display:{{specDisplay}};margin-top:72px">
+    <div style="display:flex;align-items:baseline;gap:12px;padding-bottom:12px;border-bottom:1px solid #1A2033;margin-bottom:24px">
+      <span style="font-size:20px;font-weight:600">Tokens</span>
+      <span style="font-size:13px;color:#808AA8">One type scale (7 sizes), one spacing scale (×4px), 1px borders only.</span>
+    </div>
+
+    <div style="display:flex;gap:24px;align-items:flex-start">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:600;color:#7FA6FF;letter-spacing:1.1px;margin-bottom:12px">SURFACES &amp; TEXT</div>
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead><tr>
+            <th style="text-align:left;padding:8px 12px;font-size:12px;font-weight:600;color:#808AA8;letter-spacing:0.8px;border-bottom:1px solid #232A44;width:44px"></th>
+            <th style="text-align:left;padding:8px 12px;font-size:12px;font-weight:600;color:#808AA8;letter-spacing:0.8px;border-bottom:1px solid #232A44">TOKEN</th>
+            <th style="text-align:left;padding:8px 12px;font-size:12px;font-weight:600;color:#808AA8;letter-spacing:0.8px;border-bottom:1px solid #232A44;width:118px">HEX</th>
+            <th style="text-align:left;padding:8px 12px;font-size:12px;font-weight:600;color:#808AA8;letter-spacing:0.8px;border-bottom:1px solid #232A44">WHERE</th>
+          </tr></thead>
+          <tbody>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B"><div style="width:28px;height:20px;border-radius:4px;background:#0A0D18;border:1px solid #2A3150"></div></td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">window.base</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">#0A0D18</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">Base fill of the window, under the gradient spots</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B"><div style="width:28px;height:20px;border-radius:4px;background:#0B0E1A;border:1px solid #2A3150"></div></td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">sidebar</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">rgba(9,12,24,0.62)</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">Sidebar panel (spots stay faintly visible through it)</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B"><div style="width:28px;height:20px;border-radius:4px;background:#151A2E;border:1px solid #2A3150"></div></td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">card</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">#151A2E (0.88α)</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">Every card, table body, modal</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B"><div style="width:28px;height:20px;border-radius:4px;background:#1A2038;border:1px solid #2A3150"></div></td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">card.hover</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">#1A2038</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">Only for cards that are themselves clickable</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B"><div style="width:28px;height:20px;border-radius:4px;background:#101426;border:1px solid #2A3150"></div></td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">sunken</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">#101426</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">Table header, input field, progress track</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B"><div style="width:28px;height:20px;border-radius:4px;background:#0D1120;border:1px solid #2A3150"></div></td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">console</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">#0D1120</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">Log console fill</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B"><div style="width:28px;height:20px;border-radius:4px;background:#171D33;border:1px solid #2A3150"></div></td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">row.hover</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">#171D33</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">Hovered table row</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B"><div style="width:28px;height:20px;border-radius:4px;background:#1B2340;border:1px solid #2A3150"></div></td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">row.selected</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">#1B2340</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">Selected row / active nav item wash</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B"><div style="width:28px;height:20px;border-radius:4px;background:#E8EBF5;border:1px solid #2A3150"></div></td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">text.primary</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">#E8EBF5</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">Titles, numbers, table Name column</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B"><div style="width:28px;height:20px;border-radius:4px;background:#A2AAC4;border:1px solid #2A3150"></div></td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">text.secondary</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">#A2AAC4</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">Descriptions, secondary table columns</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B"><div style="width:28px;height:20px;border-radius:4px;background:#808AA8;border:1px solid #2A3150"></div></td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">text.muted</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">#808AA8</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">Overlines, table headers, captions</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B"><div style="width:28px;height:20px;border-radius:4px;background:#5A6280;border:1px solid #2A3150"></div></td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">text.disabled</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">#5A6280</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">Disabled labels, “—” placeholder</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B"><div style="width:28px;height:20px;border-radius:4px;background:#C7D0E6;border:1px solid #2A3150"></div></td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">text.mono</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">#C7D0E6</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">Log message text</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B"><div style="width:28px;height:20px;border-radius:4px;background:#6E7794;border:1px solid #2A3150"></div></td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">text.mono.dim</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">#6E7794</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">Timestamps in the console</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:600;color:#7FA6FF;letter-spacing:1.1px;margin-bottom:12px">ACCENT, SEVERITY, BORDERS</div>
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead><tr>
+            <th style="text-align:left;padding:8px 12px;font-size:12px;font-weight:600;color:#808AA8;letter-spacing:0.8px;border-bottom:1px solid #232A44;width:44px"></th>
+            <th style="text-align:left;padding:8px 12px;font-size:12px;font-weight:600;color:#808AA8;letter-spacing:0.8px;border-bottom:1px solid #232A44">TOKEN</th>
+            <th style="text-align:left;padding:8px 12px;font-size:12px;font-weight:600;color:#808AA8;letter-spacing:0.8px;border-bottom:1px solid #232A44;width:118px">HEX</th>
+            <th style="text-align:left;padding:8px 12px;font-size:12px;font-weight:600;color:#808AA8;letter-spacing:0.8px;border-bottom:1px solid #232A44">WHERE</th>
+          </tr></thead>
+          <tbody>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B"><div style="width:28px;height:20px;border-radius:4px;background:#3E6FD9;border:1px solid #2A3150"></div></td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">accent</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">#3E6FD9</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">Primary button fill, toggle on, progress start</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B"><div style="width:28px;height:20px;border-radius:4px;background:#4C7DEA;border:1px solid #2A3150"></div></td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">accent.hover</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">#4C7DEA</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">:hover on primary</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B"><div style="width:28px;height:20px;border-radius:4px;background:#3260C0;border:1px solid #2A3150"></div></td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">accent.pressed</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">#3260C0</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">:pressed on primary</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B"><div style="width:28px;height:20px;border-radius:4px;background:#6E8CF0;border:1px solid #2A3150"></div></td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">accent.grad.end</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">#6E8CF0</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">Right stop of the progress chunk gradient</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B"><div style="width:28px;height:20px;border-radius:4px;background:#7FA6FF;border:1px solid #2A3150"></div></td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">accent.text</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">#7FA6FF</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">Active nav icon + 3px indicator, logo mark, links</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B"><div style="width:28px;height:20px;border-radius:4px;background:#1B2440;border:1px solid #2A3150"></div></td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">accent.wash</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">#1B2440</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">Active nav item background</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B"><div style="width:28px;height:20px;border-radius:4px;background:#9DBBFF;border:1px solid #2A3150"></div></td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">focus</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">#9DBBFF</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">1px keyboard-focus border on every control</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B"><div style="width:28px;height:20px;border-radius:4px;background:#58D6A6;border:1px solid #2A3150"></div></td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">ok</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">#58D6A6</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">“Quarantined”, valid key, protected hero (+ #122A22 / #2C6B52)</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B"><div style="display:flex;gap:2px"><div style="width:14px;height:20px;border-radius:4px 0 0 4px;background:#FF6A78"></div><div style="width:12px;height:20px;border-radius:0 4px 4px 0;background:#3A1420;border:1px solid #7A2434"></div></div></td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">sev.crit</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">#FF6A78 / #3A1420 / #7A2434</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">CRIT pill, counter badge, ERR log level</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B"><div style="display:flex;gap:2px"><div style="width:14px;height:20px;border-radius:4px 0 0 4px;background:#FF9A52"></div><div style="width:12px;height:20px;border-radius:0 4px 4px 0;background:#3A2413;border:1px solid #7A4A22"></div></div></td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">sev.high</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">#FF9A52 / #3A2413 / #7A4A22</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">HIGH pill, “threats detected” hero tile</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B"><div style="display:flex;gap:2px"><div style="width:14px;height:20px;border-radius:4px 0 0 4px;background:#FFCB57"></div><div style="width:12px;height:20px;border-radius:0 4px 4px 0;background:#362C10;border:1px solid #6E5A22"></div></div></td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">sev.med</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">#FFCB57 / #362C10 / #6E5A22</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">MED pill, WRN log level</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B"><div style="display:flex;gap:2px"><div style="width:14px;height:20px;border-radius:4px 0 0 4px;background:#9FB0D6"></div><div style="width:12px;height:20px;border-radius:0 4px 4px 0;background:#1B2136;border:1px solid #333C5C"></div></div></td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">sev.low</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">#9FB0D6 / #1B2136 / #333C5C</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">LOW pill, INF log level, quarantine counter</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B"><div style="display:flex;gap:2px"><div style="width:14px;height:20px;border-radius:4px 0 0 4px;background:#7C86A6"></div><div style="width:12px;height:20px;border-radius:0 4px 4px 0;background:#161A29;border:1px solid #2A3148"></div></div></td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">sev.info</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">#7C86A6 / #161A29 / #2A3148</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">INFO pill, DBG log level</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B"><div style="width:28px;height:20px;border-radius:4px;background:#151A2E;border:1px solid #262C44"></div></td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">border.card</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">#262C44</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">1px card / table / console outline (decorative)</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B"><div style="width:28px;height:20px;border-radius:4px;background:#151A2E;border:1px solid #1D2338"></div></td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">border.divider</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">#1D2338</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">1px separator between table rows</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B"><div style="width:28px;height:20px;border-radius:4px;background:#1B2136;border:1px solid #626C92"></div></td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">border.control</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">#626C92</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">1px on inputs, secondary buttons, toggle track (3.35:1)</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B"><div style="width:28px;height:20px;border-radius:4px;background:#222A46;border:1px solid #7D89B4"></div></td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">border.control.hover</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">#7D89B4</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">:hover on any bordered control</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B"><div style="width:28px;height:20px;border-radius:4px;background:#141828;border:1px solid #2A3150"></div></td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">border.disabled</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">#2A3150</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">:disabled controls (+ fill #141828)</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B"><div style="width:28px;height:20px;border-radius:4px;background:#2E3654;border:1px solid #2A3150"></div></td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">scroll.thumb</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">#2E3654</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">Scrollbar handle (hover #3C4670, pressed #4A557F, track #0E1224)</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:24px;align-items:flex-start;margin-top:32px">
+      <div style="flex:1.35;min-width:0">
+        <div style="font-size:12px;font-weight:600;color:#7FA6FF;letter-spacing:1.1px;margin-bottom:12px">TYPE SCALE — 7 SIZES, NOTHING ELSE</div>
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead><tr>
+            <th style="text-align:left;padding:8px 12px;font-size:12px;font-weight:600;color:#808AA8;letter-spacing:0.8px;border-bottom:1px solid #232A44;width:150px">SAMPLE</th>
+            <th style="text-align:left;padding:8px 12px;font-size:12px;font-weight:600;color:#808AA8;letter-spacing:0.8px;border-bottom:1px solid #232A44;width:150px">SIZE / WEIGHT / LINE</th>
+            <th style="text-align:left;padding:8px 12px;font-size:12px;font-weight:600;color:#808AA8;letter-spacing:0.8px;border-bottom:1px solid #232A44;width:96px">TRACKING</th>
+            <th style="text-align:left;padding:8px 12px;font-size:12px;font-weight:600;color:#808AA8;letter-spacing:0.8px;border-bottom:1px solid #232A44">WHERE</th>
+          </tr></thead>
+          <tbody>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5;font-size:44px;font-weight:600;line-height:46px">47%</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">44 / 600 / 46–52</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">0</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">Metric numbers, scan percent</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5;font-size:30px;font-weight:600;line-height:38px">Protected</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">30 / 600 / 38</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">−0.2</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">Hero verdict, one per screen at most</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5;font-size:20px;font-weight:600;line-height:26px">Threats</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">20 / 600 / 26</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">−0.1</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">Page title, current scan stage, modal-less headers</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5;font-size:16px;font-weight:600;line-height:22px">VirusTotal key</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">16 / 600 / 22</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">0</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">Card title, modal title, sidebar wordmark</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5;font-size:14px;line-height:20px">Trojan:Win32/Wacatac</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">14 / 400 / 20</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">0</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">Body, table cells, input text</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5;font-size:13px;font-weight:600;line-height:18px">Start scan</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">13 / 500–600 / 18</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">0</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">Buttons, nav items, status text, card captions, console (mono 13/22)</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#808AA8;font-size:12px;font-weight:600;line-height:16px;letter-spacing:1.1px">SYSTEM STATUS</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">12 / 600 / 16</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">+1.1 / +0.8 / +0.4</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">Section overlines / table headers / pills &amp; badges</td></tr>
+          </tbody>
+        </table>
+        <div style="font-size:13px;line-height:20px;color:#808AA8;margin-top:12px">Family: <span style="color:#E8EBF5">“Segoe UI Variable Display”</span>, fallback <span style="color:#E8EBF5">“Segoe UI”</span>. Console only: <span style="color:#E8EBF5">“Cascadia Mono”</span>, fallback <span style="color:#E8EBF5">“Consolas”</span>. Caps are typed as caps in the source string — QSS has no text-transform. Tracking is set in code with QFont::setLetterSpacing.</div>
+      </div>
+
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:600;color:#7FA6FF;letter-spacing:1.1px;margin-bottom:12px">SPACING, RADII, BORDERS, SIZES</div>
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <tbody>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5;width:150px">Spacing scale</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4"><span style="font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">4 · 8 · 12 · 16 · 20 · 24 · 28 · 32 · 36</span> — every padding, margin and gap. Centering offsets are derived, not tokens.</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">Radii</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4"><span style="font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">2</span> nav indicator · <span style="font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">4</span> progress, log level badge · <span style="font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">6</span> pills, compact buttons · <span style="font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">8</span> buttons, inputs, window · <span style="font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">12</span> cards, tables, toggle track · <span style="font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">16</span> hero, process card, modal · <span style="font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">20</span> hero icon tile. Never on a table cell.</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">Border width</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">1px solid, always. Focus recolours the existing 1px border, so nothing shifts by a pixel.</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">Frame</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">Sidebar <span style="font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">216</span> (was 232 — the tables need the 16px back), title strip <span style="font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">56</span>, page padding <span style="font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">24 / 28 / 28</span>.</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">Control heights</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4"><span style="font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">40</span> hero button · <span style="font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">36</span> input, Test key · <span style="font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">32</span> page-header button · <span style="font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">28</span> row action · <span style="font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">24</span> toggle, counter badge · <span style="font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">20</span> pill, log badge.</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">Table density</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">Header <span style="font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">40</span>, row <span style="font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">40</span> (cap 44), cell padding <span style="font-family:'Cascadia Mono',Consolas,monospace;color:#E8EBF5">0 16</span>, 14px text on a 20px line → 10px of air above and below.</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">Stretch to 1920</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">Sidebar fixed. Cards and tables take the extra width; Name / Source / Original location absorb it, other columns keep their px. Tables take the extra height; Home and Settings park it in a bottom spacer.</td></tr>
+          </tbody>
+        </table>
+
+        <div style="font-size:12px;font-weight:600;color:#7FA6FF;letter-spacing:1.1px;margin:28px 0 12px">MEASURED CONTRAST</div>
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <tbody>
+            <tr><td style="padding:6px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">#E8EBF5 on #0A0D18</td><td style="padding:6px 12px;border-bottom:1px solid #161B2B;color:#58D6A6;text-align:right">16.3 : 1</td><td style="padding:6px 12px;border-bottom:1px solid #161B2B;color:#808AA8">body text on window</td></tr>
+            <tr><td style="padding:6px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">#E8EBF5 on #151A2E</td><td style="padding:6px 12px;border-bottom:1px solid #161B2B;color:#58D6A6;text-align:right">14.5 : 1</td><td style="padding:6px 12px;border-bottom:1px solid #161B2B;color:#808AA8">primary text on card</td></tr>
+            <tr><td style="padding:6px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">#A2AAC4 on #151A2E</td><td style="padding:6px 12px;border-bottom:1px solid #161B2B;color:#58D6A6;text-align:right">7.5 : 1</td><td style="padding:6px 12px;border-bottom:1px solid #161B2B;color:#808AA8">secondary text</td></tr>
+            <tr><td style="padding:6px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">#808AA8 on #151A2E</td><td style="padding:6px 12px;border-bottom:1px solid #161B2B;color:#58D6A6;text-align:right">5.0 : 1</td><td style="padding:6px 12px;border-bottom:1px solid #161B2B;color:#808AA8">12px overlines &amp; table headers</td></tr>
+            <tr><td style="padding:6px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">#FFFFFF on #3E6FD9</td><td style="padding:6px 12px;border-bottom:1px solid #161B2B;color:#58D6A6;text-align:right">4.7 : 1</td><td style="padding:6px 12px;border-bottom:1px solid #161B2B;color:#808AA8">primary button label</td></tr>
+            <tr><td style="padding:6px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">#7FA6FF on sidebar</td><td style="padding:6px 12px;border-bottom:1px solid #161B2B;color:#58D6A6;text-align:right">7.8 : 1</td><td style="padding:6px 12px;border-bottom:1px solid #161B2B;color:#808AA8">active nav icon + indicator</td></tr>
+            <tr><td style="padding:6px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">#FF6A78 on #3A1420</td><td style="padding:6px 12px;border-bottom:1px solid #161B2B;color:#58D6A6;text-align:right">5.8 : 1</td><td style="padding:6px 12px;border-bottom:1px solid #161B2B;color:#808AA8">CRIT pill</td></tr>
+            <tr><td style="padding:6px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">#FF9A52 on #3A2413</td><td style="padding:6px 12px;border-bottom:1px solid #161B2B;color:#58D6A6;text-align:right">6.9 : 1</td><td style="padding:6px 12px;border-bottom:1px solid #161B2B;color:#808AA8">HIGH pill</td></tr>
+            <tr><td style="padding:6px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">#FFCB57 on #362C10</td><td style="padding:6px 12px;border-bottom:1px solid #161B2B;color:#58D6A6;text-align:right">9.1 : 1</td><td style="padding:6px 12px;border-bottom:1px solid #161B2B;color:#808AA8">MED pill</td></tr>
+            <tr><td style="padding:6px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">#9FB0D6 on #1B2136</td><td style="padding:6px 12px;border-bottom:1px solid #161B2B;color:#58D6A6;text-align:right">7.3 : 1</td><td style="padding:6px 12px;border-bottom:1px solid #161B2B;color:#808AA8">LOW pill</td></tr>
+            <tr><td style="padding:6px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">#7C86A6 on #161A29</td><td style="padding:6px 12px;border-bottom:1px solid #161B2B;color:#58D6A6;text-align:right">4.8 : 1</td><td style="padding:6px 12px;border-bottom:1px solid #161B2B;color:#808AA8">INFO pill (tightest text pair)</td></tr>
+            <tr><td style="padding:6px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">#C7D0E6 on #0D1120</td><td style="padding:6px 12px;border-bottom:1px solid #161B2B;color:#58D6A6;text-align:right">12.2 : 1</td><td style="padding:6px 12px;border-bottom:1px solid #161B2B;color:#808AA8">console text</td></tr>
+            <tr><td style="padding:6px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">#58D6A6 on #151A2E</td><td style="padding:6px 12px;border-bottom:1px solid #161B2B;color:#58D6A6;text-align:right">9.5 : 1</td><td style="padding:6px 12px;border-bottom:1px solid #161B2B;color:#808AA8">success line, “Quarantined”</td></tr>
+            <tr><td style="padding:6px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">#626C92 on #151A2E</td><td style="padding:6px 12px;border-bottom:1px solid #161B2B;color:#58D6A6;text-align:right">3.35 : 1</td><td style="padding:6px 12px;border-bottom:1px solid #161B2B;color:#808AA8">control border (needs ≥3)</td></tr>
+            <tr><td style="padding:6px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">#9DBBFF on #151A2E</td><td style="padding:6px 12px;border-bottom:1px solid #161B2B;color:#58D6A6;text-align:right">9.0 : 1</td><td style="padding:6px 12px;border-bottom:1px solid #161B2B;color:#808AA8">focus border</td></tr>
+            <tr><td style="padding:6px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">#262C44 on #151A2E</td><td style="padding:6px 12px;border-bottom:1px solid #161B2B;color:#FFCB57;text-align:right">1.4 : 1</td><td style="padding:6px 12px;border-bottom:1px solid #161B2B;color:#808AA8">card hairline — decorative only; the card is identified by its fill, not this line</td></tr>
+            <tr><td style="padding:6px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">#5A6280 on #151A2E</td><td style="padding:6px 12px;border-bottom:1px solid #161B2B;color:#808AA8;text-align:right">2.9 : 1</td><td style="padding:6px 12px;border-bottom:1px solid #161B2B;color:#808AA8">disabled text — exempt by design, and never the only cue</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div id="components" style="display:{{specDisplay}};margin-top:72px">
+    <div style="display:flex;align-items:baseline;gap:12px;padding-bottom:12px;border-bottom:1px solid #1A2033;margin-bottom:24px">
+      <span style="font-size:20px;font-weight:600">Components &amp; states</span>
+      <span style="font-size:13px;color:#808AA8">Everything below is drawn with the real values — normal, hover, pressed, disabled, focus.</span>
+    </div>
+
+    <div style="font-size:12px;font-weight:600;color:#7FA6FF;letter-spacing:1.1px;margin-bottom:16px">BUTTONS</div>
+    <div style="display:grid;grid-template-columns:120px repeat(5,1fr);gap:16px;align-items:center">
+      <div></div>
+      <div style="font-size:12px;font-weight:600;color:#808AA8;letter-spacing:0.8px">NORMAL</div>
+      <div style="font-size:12px;font-weight:600;color:#808AA8;letter-spacing:0.8px">HOVER</div>
+      <div style="font-size:12px;font-weight:600;color:#808AA8;letter-spacing:0.8px">PRESSED</div>
+      <div style="font-size:12px;font-weight:600;color:#808AA8;letter-spacing:0.8px">DISABLED</div>
+      <div style="font-size:12px;font-weight:600;color:#808AA8;letter-spacing:0.8px">FOCUS</div>
+
+      <div style="font-size:13px;color:#A2AAC4">Primary 40px</div>
+      <div><div style="display:inline-flex;height:40px;padding:0 20px;border-radius:8px;background:#3E6FD9;border:1px solid transparent;color:#FFFFFF;font-size:13px;font-weight:600;align-items:center;box-shadow:0 3px 14px rgba(11,27,71,0.47)">Start scan</div></div>
+      <div><div style="display:inline-flex;height:40px;padding:0 20px;border-radius:8px;background:#4C7DEA;border:1px solid transparent;color:#FFFFFF;font-size:13px;font-weight:600;align-items:center;box-shadow:0 3px 14px rgba(11,27,71,0.47)">Start scan</div></div>
+      <div><div style="display:inline-flex;height:40px;padding:0 20px;border-radius:8px;background:#3260C0;border:1px solid transparent;color:#FFFFFF;font-size:13px;font-weight:600;align-items:center">Start scan</div></div>
+      <div><div style="display:inline-flex;height:40px;padding:0 20px;border-radius:8px;background:#1A2140;border:1px solid #2A3150;color:#5A6280;font-size:13px;font-weight:600;align-items:center">Start scan</div></div>
+      <div><div style="display:inline-flex;height:40px;padding:0 20px;border-radius:8px;background:#3E6FD9;border:1px solid #9DBBFF;color:#FFFFFF;font-size:13px;font-weight:600;align-items:center;box-shadow:0 3px 14px rgba(11,27,71,0.47)">Start scan</div></div>
+
+      <div style="font-size:13px;color:#A2AAC4">Secondary 32px</div>
+      <div><div style="display:inline-flex;height:32px;padding:0 16px;border-radius:8px;background:#1B2136;border:1px solid #626C92;color:#E8EBF5;font-size:13px;font-weight:600;align-items:center">Refresh</div></div>
+      <div><div style="display:inline-flex;height:32px;padding:0 16px;border-radius:8px;background:#222A46;border:1px solid #7D89B4;color:#E8EBF5;font-size:13px;font-weight:600;align-items:center">Refresh</div></div>
+      <div><div style="display:inline-flex;height:32px;padding:0 16px;border-radius:8px;background:#151A2E;border:1px solid #626C92;color:#E8EBF5;font-size:13px;font-weight:600;align-items:center">Refresh</div></div>
+      <div><div style="display:inline-flex;height:32px;padding:0 16px;border-radius:8px;background:#141828;border:1px solid #2A3150;color:#5A6280;font-size:13px;font-weight:600;align-items:center">Refresh</div></div>
+      <div><div style="display:inline-flex;height:32px;padding:0 16px;border-radius:8px;background:#1B2136;border:1px solid #9DBBFF;color:#E8EBF5;font-size:13px;font-weight:600;align-items:center">Refresh</div></div>
+
+      <div style="font-size:13px;color:#A2AAC4">Row action 28px</div>
+      <div><div style="display:inline-flex;height:28px;padding:0 8px;border-radius:6px;background:#1B2136;border:1px solid #626C92;color:#D5DCEE;font-size:12px;font-weight:500;align-items:center">Quarantine</div></div>
+      <div><div style="display:inline-flex;height:28px;padding:0 8px;border-radius:6px;background:#222A46;border:1px solid #7D89B4;color:#D5DCEE;font-size:12px;font-weight:500;align-items:center">Quarantine</div></div>
+      <div><div style="display:inline-flex;height:28px;padding:0 8px;border-radius:6px;background:#151A2E;border:1px solid #626C92;color:#D5DCEE;font-size:12px;font-weight:500;align-items:center">Quarantine</div></div>
+      <div><div style="display:inline-flex;height:28px;padding:0 8px;border-radius:6px;background:#141828;border:1px solid #2A3150;color:#5A6280;font-size:12px;font-weight:500;align-items:center">Quarantine</div></div>
+      <div><div style="display:inline-flex;height:28px;padding:0 8px;border-radius:6px;background:#1B2136;border:1px solid #9DBBFF;color:#D5DCEE;font-size:12px;font-weight:500;align-items:center">Quarantine</div></div>
+
+      <div style="font-size:13px;color:#A2AAC4">Nav item 40px</div>
+      <div><div style="display:flex;width:200px;height:40px;padding:0 12px;gap:8px;border-radius:8px;background:transparent;border:1px solid transparent;color:#A2AAC4;font-size:13px;font-weight:500;align-items:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#808AA8" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7h12M8 12h12M8 17h12"></path><path d="M4 7h.01M4 12h.01M4 17h.01"></path></svg>Logs</div></div>
+      <div><div style="display:flex;width:200px;height:40px;padding:0 12px;gap:8px;border-radius:8px;background:#161B2E;border:1px solid transparent;color:#E8EBF5;font-size:13px;font-weight:500;align-items:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#808AA8" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7h12M8 12h12M8 17h12"></path><path d="M4 7h.01M4 12h.01M4 17h.01"></path></svg>Logs</div></div>
+      <div><div style="position:relative;display:flex;width:200px;height:40px;padding:0 12px;gap:8px;border-radius:8px;background:#1B2440;border:1px solid transparent;color:#E8EBF5;font-size:13px;font-weight:500;align-items:center"><div style="position:absolute;left:0;top:10px;width:3px;height:20px;border-radius:2px;background:#7FA6FF"></div><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7FA6FF" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7h12M8 12h12M8 17h12"></path><path d="M4 7h.01M4 12h.01M4 17h.01"></path></svg>Logs <span style="font-size:12px;color:#808AA8;margin-left:auto">active</span></div></div>
+      <div><div style="display:flex;width:200px;height:40px;padding:0 12px;gap:8px;border-radius:8px;background:transparent;border:1px solid transparent;color:#5A6280;font-size:13px;font-weight:500;align-items:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5A6280" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7h12M8 12h12M8 17h12"></path><path d="M4 7h.01M4 12h.01M4 17h.01"></path></svg>Logs</div></div>
+      <div><div style="display:flex;width:200px;height:40px;padding:0 12px;gap:8px;border-radius:8px;background:transparent;border:1px solid #9DBBFF;color:#E8EBF5;font-size:13px;font-weight:500;align-items:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#808AA8" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7h12M8 12h12M8 17h12"></path><path d="M4 7h.01M4 12h.01M4 17h.01"></path></svg>Logs</div></div>
+    </div>
+
+    <div style="display:flex;gap:32px;margin-top:36px;align-items:flex-start">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:600;color:#7FA6FF;letter-spacing:1.1px;margin-bottom:16px">SEVERITY — COLOUR AND WORD, NEVER COLOUR ALONE</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <span style="display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:6px;background:#3A1420;border:1px solid #7A2434;color:#FF6A78;font-size:12px;font-weight:600;letter-spacing:0.4px">CRIT</span>
+          <span style="display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:6px;background:#3A2413;border:1px solid #7A4A22;color:#FF9A52;font-size:12px;font-weight:600;letter-spacing:0.4px">HIGH</span>
+          <span style="display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:6px;background:#362C10;border:1px solid #6E5A22;color:#FFCB57;font-size:12px;font-weight:600;letter-spacing:0.4px">MED</span>
+          <span style="display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:6px;background:#1B2136;border:1px solid #333C5C;color:#9FB0D6;font-size:12px;font-weight:600;letter-spacing:0.4px">LOW</span>
+          <span style="display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:6px;background:#161A29;border:1px solid #2A3148;color:#7C86A6;font-size:12px;font-weight:600;letter-spacing:0.4px">INFO</span>
+        </div>
+        <div style="font-size:13px;line-height:20px;color:#808AA8;margin-top:12px">Red, orange and yellow appear only here (plus the log ERR/WRN badges and the hero tile, which mirror the same scale). LOW and INFO deliberately step out of the warm ramp into neutral blue-grey — “not dangerous” should not look like “slightly dangerous”.</div>
+
+        <div style="font-size:12px;font-weight:600;color:#7FA6FF;letter-spacing:1.1px;margin:28px 0 16px">STATUS — DOT + WORD</div>
+        <div style="display:flex;gap:20px;flex-wrap:wrap">
+          <span style="display:inline-flex;align-items:center;gap:8px;color:#A2AAC4;font-size:13px"><span style="width:6px;height:6px;border-radius:3px;background:#A2AAC4"></span>Pending</span>
+          <span style="display:inline-flex;align-items:center;gap:8px;color:#58D6A6;font-size:13px"><span style="width:6px;height:6px;border-radius:3px;background:#58D6A6"></span>Quarantined</span>
+          <span style="display:inline-flex;align-items:center;gap:8px;color:#808AA8;font-size:13px"><span style="width:6px;height:6px;border-radius:3px;background:#808AA8"></span>Deleted</span>
+          <span style="display:inline-flex;align-items:center;gap:8px;color:#808AA8;font-size:13px"><span style="width:6px;height:6px;border-radius:3px;background:#808AA8"></span>Ignored</span>
+          <span style="display:inline-flex;align-items:center;gap:8px;color:#FF6A78;font-size:13px"><span style="width:6px;height:6px;border-radius:3px;background:#FF6A78"></span>Failed</span>
+        </div>
+
+        <div style="font-size:12px;font-weight:600;color:#7FA6FF;letter-spacing:1.1px;margin:28px 0 16px">VIRUSTOTAL CELL</div>
+        <div style="display:flex;gap:20px;flex-wrap:wrap;font-size:14px">
+          <span style="color:#5A6280">—</span>
+          <span style="color:#808AA8">Not checked</span>
+          <span style="color:#A2AAC4">Checking…</span>
+          <span style="color:#E8EBF5">58<span style="color:#808AA8"> / 70</span></span>
+          <span style="color:#808AA8">Unknown</span>
+          <span style="color:#FF6A78">Error</span>
+        </div>
+        <div style="font-size:13px;line-height:20px;color:#808AA8;margin-top:12px">“—” = never queued, “Not checked” = queued but no key, “Unknown” = VirusTotal has no record of the hash. The ellipsis in “Checking…” cycles by timer, the text never changes width.</div>
+
+        <div style="font-size:12px;font-weight:600;color:#7FA6FF;letter-spacing:1.1px;margin:28px 0 16px">LOG LEVEL BADGES</div>
+        <div style="display:flex;gap:8px">
+          <span style="width:40px;height:20px;border-radius:4px;background:#161A29;border:1px solid #2A3148;color:#808AA8;font-size:12px;font-weight:600;display:inline-flex;align-items:center;justify-content:center">DBG</span>
+          <span style="width:40px;height:20px;border-radius:4px;background:#1B2136;border:1px solid #333C5C;color:#9FB0D6;font-size:12px;font-weight:600;display:inline-flex;align-items:center;justify-content:center">INF</span>
+          <span style="width:40px;height:20px;border-radius:4px;background:#362C10;border:1px solid #6E5A22;color:#FFCB57;font-size:12px;font-weight:600;display:inline-flex;align-items:center;justify-content:center">WRN</span>
+          <span style="width:40px;height:20px;border-radius:4px;background:#3A1420;border:1px solid #7A2434;color:#FF6A78;font-size:12px;font-weight:600;display:inline-flex;align-items:center;justify-content:center">ERR</span>
+        </div>
+      </div>
+
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:600;color:#7FA6FF;letter-spacing:1.1px;margin-bottom:16px">INPUT (PASSWORD MODE) — FIVE STATES</div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;align-items:center;gap:12px"><div style="width:280px;height:36px;border-radius:8px;background:#101426;border:1px solid #626C92;padding:0 12px;display:flex;align-items:center;font-size:14px;color:#E8EBF5;letter-spacing:2px">••••••••••••</div><span style="font-size:13px;color:#808AA8">normal — #101426 / #626C92</span></div>
+          <div style="display:flex;align-items:center;gap:12px"><div style="width:280px;height:36px;border-radius:8px;background:#131933;border:1px solid #7D89B4;padding:0 12px;display:flex;align-items:center;font-size:14px;color:#E8EBF5;letter-spacing:2px">••••••••••••</div><span style="font-size:13px;color:#808AA8">hover — #131933 / #7D89B4</span></div>
+          <div style="display:flex;align-items:center;gap:12px"><div style="width:280px;height:36px;border-radius:8px;background:#131933;border:1px solid #9DBBFF;padding:0 12px;display:flex;align-items:center;font-size:14px;color:#E8EBF5;letter-spacing:2px">••••••••••••<span style="width:1px;height:18px;background:#9DBBFF;margin-left:2px"></span></div><span style="font-size:13px;color:#808AA8">focus — caret + #9DBBFF border</span></div>
+          <div style="display:flex;align-items:center;gap:12px"><div style="width:280px;height:36px;border-radius:8px;background:#141828;border:1px solid #2A3150;padding:0 12px;display:flex;align-items:center;font-size:14px;color:#5A6280">Key stored in Credential Manager</div><span style="font-size:13px;color:#808AA8">disabled</span></div>
+          <div style="display:flex;align-items:center;gap:12px"><div style="width:280px;height:36px;border-radius:8px;background:#101426;border:1px solid #FF6A78;padding:0 12px;display:flex;align-items:center;font-size:14px;color:#E8EBF5;letter-spacing:2px">••••••</div><span style="font-size:13px;color:#808AA8">invalid — border sev.crit, message below</span></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:16px">
+          <div style="display:flex;align-items:center;gap:8px;color:#58D6A6;font-size:13px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.8 9.6 17.4 19 8"></path></svg>Key is valid — quota 4 requests/min, 500 per day</div>
+          <div style="display:flex;align-items:center;gap:8px;color:#FF6A78;font-size:13px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.4 6.4 17.6 17.6M17.6 6.4 6.4 17.6"></path></svg>Invalid key (HTTP 401) — check it and try again</div>
+        </div>
+
+        <div style="font-size:12px;font-weight:600;color:#7FA6FF;letter-spacing:1.1px;margin:28px 0 16px">TOGGLE — 44 × 24, KNOB 16</div>
+        <div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:12px"><div style="width:44px;height:24px;border-radius:12px;background:#1B2136;border:1px solid #626C92;padding:4px;display:flex;justify-content:flex-start;align-items:center"><div style="width:16px;height:16px;border-radius:8px;background:#808AA8"></div></div><span style="font-size:13px;color:#808AA8">off</span></div>
+          <div style="display:flex;align-items:center;gap:12px"><div style="width:44px;height:24px;border-radius:12px;background:#3E6FD9;border:1px solid #3E6FD9;padding:4px;display:flex;justify-content:flex-end;align-items:center"><div style="width:16px;height:16px;border-radius:8px;background:#FFFFFF"></div></div><span style="font-size:13px;color:#808AA8">on</span></div>
+          <div style="display:flex;align-items:center;gap:12px"><div style="width:44px;height:24px;border-radius:12px;background:#222A46;border:1px solid #7D89B4;padding:4px;display:flex;justify-content:flex-start;align-items:center"><div style="width:16px;height:16px;border-radius:8px;background:#A2AAC4"></div></div><span style="font-size:13px;color:#808AA8">hover</span></div>
+          <div style="display:flex;align-items:center;gap:12px"><div style="width:44px;height:24px;border-radius:12px;background:#141828;border:1px solid #2A3150;padding:4px;display:flex;justify-content:flex-start;align-items:center"><div style="width:16px;height:16px;border-radius:8px;background:#5A6280"></div></div><span style="font-size:13px;color:#808AA8">disabled</span></div>
+          <div style="display:flex;align-items:center;gap:12px"><div style="width:44px;height:24px;border-radius:12px;background:#3E6FD9;border:1px solid #9DBBFF;padding:4px;display:flex;justify-content:flex-end;align-items:center"><div style="width:16px;height:16px;border-radius:8px;background:#FFFFFF"></div></div><span style="font-size:13px;color:#808AA8">focus</span></div>
+        </div>
+
+        <div style="font-size:12px;font-weight:600;color:#7FA6FF;letter-spacing:1.1px;margin:28px 0 16px">PROGRESS BAR — 8px, TRACK #101426</div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div style="height:8px;border-radius:4px;background:#101426;border:1px solid #262C44;overflow:hidden"><div style="width:0;height:100%;background:linear-gradient(90deg,#3E6FD9,#6E8CF0)"></div></div>
+          <div style="height:8px;border-radius:4px;background:#101426;border:1px solid #262C44;overflow:hidden"><div style="width:47%;height:100%;border-radius:4px;background:linear-gradient(90deg,#3E6FD9,#6E8CF0)"></div></div>
+          <div style="height:8px;border-radius:4px;background:#101426;border:1px solid #262C44;overflow:hidden"><div style="width:100%;height:100%;border-radius:4px;background:linear-gradient(90deg,#3E6FD9,#6E8CF0)"></div></div>
+        </div>
+
+        <div style="font-size:12px;font-weight:600;color:#7FA6FF;letter-spacing:1.1px;margin:28px 0 16px">SCROLLBAR — 10px, NO ARROWS</div>
+        <div style="display:flex;gap:24px;align-items:flex-start">
+          <div style="width:10px;height:132px;border-radius:5px;background:#0E1224;padding:0"><div style="width:10px;height:56px;border-radius:5px;background:#2E3654"></div></div>
+          <div style="width:10px;height:132px;border-radius:5px;background:#0E1224"><div style="width:10px;height:56px;border-radius:5px;background:#3C4670;margin-top:38px"></div></div>
+          <div style="width:10px;height:132px;border-radius:5px;background:#0E1224"><div style="width:10px;height:56px;border-radius:5px;background:#4A557F;margin-top:76px"></div></div>
+          <div style="font-size:13px;line-height:20px;color:#808AA8;flex:1">Handle 10 × ≥32px, radius 5. Track #0E1224. Hover #3C4670, pressed #4A557F. Sub-line and add-line are zero-height, so there are no arrow buttons.</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="font-size:12px;font-weight:600;color:#7FA6FF;letter-spacing:1.1px;margin:36px 0 16px">HERO CARD — THREE VERDICTS (SAME GEOMETRY, TILE AND WORDS CHANGE)</div>
+    <div style="display:flex;gap:16px">
+      <div style="flex:1;background:#151A2E;border:1px solid #262C44;border-radius:16px;padding:24px;display:flex;align-items:center;gap:16px">
+        <div style="width:64px;height:64px;flex:none;border-radius:16px;background:#122A22;border:1px solid #2C6B52;color:#58D6A6;display:flex;align-items:center;justify-content:center"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2 19.2 6v6.1c0 4.1-2.9 7.2-7.2 8.7-4.3-1.5-7.2-4.6-7.2-8.7V6L12 3.2Z"></path><path d="m8.9 11.9 2.3 2.3 4.1-4.4"></path></svg></div>
+        <div><div style="font-size:16px;font-weight:600;color:#E8EBF5">System is protected</div><div style="font-size:13px;color:#808AA8;margin-top:4px">tile #122A22 / #2C6B52 / #58D6A6</div></div>
+      </div>
+      <div style="flex:1;background:#151A2E;border:1px solid #262C44;border-radius:16px;padding:24px;display:flex;align-items:center;gap:16px">
+        <div style="width:64px;height:64px;flex:none;border-radius:16px;background:#3A2413;border:1px solid #7A4A22;color:#FF9A52;display:flex;align-items:center;justify-content:center"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4.4 21 19.6H3L12 4.4Z"></path><path d="M12 9.8v4.4"></path><path d="M12 17h.01"></path></svg></div>
+        <div><div style="font-size:16px;font-weight:600;color:#E8EBF5">Threats detected</div><div style="font-size:13px;color:#808AA8;margin-top:4px">tile #3A2413 / #7A4A22 / #FF9A52</div></div>
+      </div>
+      <div style="flex:1;background:#151A2E;border:1px solid #262C44;border-radius:16px;padding:24px;display:flex;align-items:center;gap:16px">
+        <div style="width:64px;height:64px;flex:none;border-radius:16px;background:#3A1420;border:1px solid #7A2434;color:#FF6A78;display:flex;align-items:center;justify-content:center"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4.4 21 19.6H3L12 4.4Z"></path><path d="M12 9.8v4.4"></path><path d="M12 17h.01"></path></svg></div>
+        <div><div style="font-size:16px;font-weight:600;color:#E8EBF5">Critical threats detected!</div><div style="font-size:13px;color:#808AA8;margin-top:4px">tile #3A1420 / #7A2434 / #FF6A78</div></div>
+      </div>
+    </div>
+
+    <div style="font-size:12px;font-weight:600;color:#7FA6FF;letter-spacing:1.1px;margin:36px 0 16px">EMPTY TABLE STATES</div>
+    <div style="display:flex;gap:16px">
+      <div style="flex:1;height:260px;background:#151A2E;border:1px solid #262C44;border-radius:12px;overflow:hidden;display:flex;flex-direction:column">
+        <div style="height:40px;flex:none;background:#101426;border-bottom:1px solid #262C44;display:flex;align-items:center;padding:0 16px;gap:32px;font-size:12px;font-weight:600;color:#808AA8;letter-spacing:0.8px"><span>SEVERITY</span><span>NAME</span><span>SOURCE</span><span>VIRUSTOTAL</span><span>STATUS</span><span>ACTIONS</span></div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px">
+          <div style="width:56px;height:56px;border-radius:16px;background:#122A22;border:1px solid #2C6B52;color:#58D6A6;display:flex;align-items:center;justify-content:center"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2 19.2 6v6.1c0 4.1-2.9 7.2-7.2 8.7-4.3-1.5-7.2-4.6-7.2-8.7V6L12 3.2Z"></path><path d="m8.9 11.9 2.3 2.3 4.1-4.4"></path></svg></div>
+          <div style="font-size:16px;font-weight:600;color:#E8EBF5">No threats found</div>
+          <div style="font-size:13px;color:#808AA8">The last scan finished 12 minutes ago and found nothing suspicious.</div>
+          <div style="display:inline-flex;height:32px;padding:0 16px;border-radius:8px;background:#1B2136;border:1px solid #626C92;color:#E8EBF5;font-size:13px;font-weight:600;align-items:center;margin-top:4px">Start scan</div>
+        </div>
+      </div>
+      <div style="flex:1;height:260px;background:#151A2E;border:1px solid #262C44;border-radius:12px;overflow:hidden;display:flex;flex-direction:column">
+        <div style="height:40px;flex:none;background:#101426;border-bottom:1px solid #262C44;display:flex;align-items:center;padding:0 16px;gap:32px;font-size:12px;font-weight:600;color:#808AA8;letter-spacing:0.8px"><span>FILE</span><span>THREAT</span><span>SEVERITY</span><span>LOCATION</span><span>SIZE</span><span>ACTIONS</span></div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px">
+          <div style="width:56px;height:56px;border-radius:16px;background:#1B2136;border:1px solid #333C5C;color:#9FB0D6;display:flex;align-items:center;justify-content:center"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.4 12 4.4l8 4v7.2L12 19.6 4 15.6V8.4Z"></path><path d="M4 8.4 12 12.4l8-4"></path><path d="M12 12.4v7.2"></path></svg></div>
+          <div style="font-size:16px;font-weight:600;color:#E8EBF5">Quarantine is empty</div>
+          <div style="font-size:13px;color:#808AA8">Isolated files land here. Nothing is being held right now.</div>
+          <div style="display:inline-flex;height:32px;padding:0 16px;border-radius:8px;background:#1B2136;border:1px solid #626C92;color:#E8EBF5;font-size:13px;font-weight:600;align-items:center;margin-top:4px">Open folder</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="font-size:12px;font-weight:600;color:#7FA6FF;letter-spacing:1.1px;margin:36px 0 16px">CONFIRMATION MODAL — REVERSIBLE AND IRREVERSIBLE</div>
+    <div style="display:flex;gap:16px;padding:32px;border-radius:12px;background:rgba(6,8,15,0.72);border:1px solid #1A2033">
+      <div style="width:440px;background:#151A2E;border:1px solid #262C44;border-radius:16px;padding:24px;box-shadow:0 16px 48px rgba(4,6,13,0.75)">
+        <div style="font-size:16px;font-weight:600;color:#E8EBF5">Quarantine this threat?</div>
+        <div style="font-size:13px;line-height:20px;color:#A2AAC4;margin-top:8px">Trojan:Win32/Wacatac.B!ml will be moved to the isolated folder and its autorun key removed. You can restore it from Quarantine at any time.</div>
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:24px">
+          <div style="display:inline-flex;height:32px;padding:0 16px;border-radius:8px;background:#1B2136;border:1px solid #626C92;color:#E8EBF5;font-size:13px;font-weight:600;align-items:center">Cancel</div>
+          <div style="display:inline-flex;height:32px;padding:0 16px;border-radius:8px;background:#3E6FD9;border:1px solid transparent;color:#FFFFFF;font-size:13px;font-weight:600;align-items:center">Yes, quarantine</div>
+        </div>
+      </div>
+      <div style="width:440px;background:#151A2E;border:1px solid #262C44;border-radius:16px;padding:24px;box-shadow:0 16px 48px rgba(4,6,13,0.75)">
+        <div style="display:flex;align-items:center;gap:8px;height:32px;padding:0 12px;border-radius:8px;background:#3A1420;border:1px solid #7A2434;color:#FF6A78;font-size:13px;font-weight:600;margin-bottom:16px">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4.4 21 19.6H3L12 4.4Z"></path><path d="M12 9.8v4.4"></path><path d="M12 17h.01"></path></svg>
+          <span>This cannot be undone</span>
+        </div>
+        <div style="font-size:16px;font-weight:600;color:#E8EBF5">Delete svc-host.exe permanently?</div>
+        <div style="font-size:13px;line-height:20px;color:#A2AAC4;margin-top:8px">The file will be erased from disk, not moved. If it turns out to be a false positive, it cannot be brought back.</div>
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:24px">
+          <div style="display:inline-flex;height:32px;padding:0 16px;border-radius:8px;background:#1B2136;border:1px solid #9DBBFF;color:#E8EBF5;font-size:13px;font-weight:600;align-items:center">Cancel</div>
+          <div style="display:inline-flex;height:32px;padding:0 16px;border-radius:8px;background:#3E6FD9;border:1px solid transparent;color:#FFFFFF;font-size:13px;font-weight:600;align-items:center">Delete permanently</div>
+        </div>
+      </div>
+    </div>
+    <div style="font-size:13px;line-height:20px;color:#808AA8;margin-top:12px;max-width:960px">Modal width 440, radius 16, backdrop rgba(6,8,15,0.72) painted by a frameless overlay widget. In the irreversible variant the danger colour lives in the warning strip, not in the button — red stays reserved for severity, and Cancel takes focus by default, so Enter never destroys a file.</div>
+  </div>
+
+  <div id="surface" style="display:{{specDisplay}};margin-top:72px">
+    <div style="display:flex;align-items:baseline;gap:12px;padding-bottom:12px;border-bottom:1px solid #1A2033;margin-bottom:24px">
+      <span style="font-size:20px;font-weight:600">Window background — parametric</span>
+      <span style="font-size:13px;color:#808AA8">Base fill + four radial spots, all in % of window size. No bitmaps, no blur: softness comes from stretched stops.</span>
+    </div>
+    <div style="display:flex;gap:32px;align-items:flex-start">
+      <div style="flex:1;min-width:0">
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead><tr>
+            <th style="text-align:left;padding:8px 12px;font-size:12px;font-weight:600;color:#808AA8;letter-spacing:0.8px;border-bottom:1px solid #232A44">SPOT</th>
+            <th style="text-align:left;padding:8px 12px;font-size:12px;font-weight:600;color:#808AA8;letter-spacing:0.8px;border-bottom:1px solid #232A44">CENTER X / Y</th>
+            <th style="text-align:left;padding:8px 12px;font-size:12px;font-weight:600;color:#808AA8;letter-spacing:0.8px;border-bottom:1px solid #232A44">RADIUS</th>
+            <th style="text-align:left;padding:8px 12px;font-size:12px;font-weight:600;color:#808AA8;letter-spacing:0.8px;border-bottom:1px solid #232A44">COLOR</th>
+            <th style="text-align:left;padding:8px 12px;font-size:12px;font-weight:600;color:#808AA8;letter-spacing:0.8px;border-bottom:1px solid #232A44">ALPHA</th>
+            <th style="text-align:left;padding:8px 12px;font-size:12px;font-weight:600;color:#808AA8;letter-spacing:0.8px;border-bottom:1px solid #232A44">ROLE</th>
+          </tr></thead>
+          <tbody>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">base fill</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">—</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">full rect</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5;font-family:'Cascadia Mono',Consolas,monospace">#0A0D18</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">255</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">Painted first, everything sits on it</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">S1 violet</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">10% / 4%</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">48%</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5;font-family:'Cascadia Mono',Consolas,monospace">#3E2F9E</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">165</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">Warmth behind the logo and hero card</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">S2 blue</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">82% / 2%</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">42%</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5;font-family:'Cascadia Mono',Consolas,monospace">#1D5AA8</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">120</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">Keeps the title strip from going flat</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">S3 indigo</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">96% / 96%</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">55%</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5;font-family:'Cascadia Mono',Consolas,monospace">#2A2F7A</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">105</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">Anchors the bottom-right corner under long tables</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">S4 steel</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">26% / 88%</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">45%</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5;font-family:'Cascadia Mono',Consolas,monospace">#14456E</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">80</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">Cools the sidebar foot, stops a violet-only mood</td></tr>
+          </tbody>
+        </table>
+        <div style="font-size:13px;line-height:20px;color:#A2AAC4;margin-top:16px">Every spot uses the same four stops, so they all read as soft light rather than as a disc:</div>
+        <div style="margin-top:8px;padding:16px;border-radius:8px;background:#0D1120;border:1px solid #262C44;font-family:'Cascadia Mono',Consolas,monospace;font-size:13px;line-height:22px;color:#C7D0E6;white-space:pre;overflow-x:auto">stop 0.00 → rgba(hex, alpha)
+stop 0.40 → rgba(hex, alpha × 0.55)
+stop 0.70 → rgba(hex, alpha × 0.20)
+stop 1.00 → rgba(hex, 0)
+
+// Qt, in the window's paintEvent — % values are read off the current rect,
+// so the spots follow the window from 1100×720 up to 1920×1080.
+QRadialGradient g(w * 0.10, h * 0.04, qMax(w, h) * 0.48);</div>
+      </div>
+      <div style="flex:none">
+        <div style="width:560px;height:350px;border-radius:8px;border:1px solid #232A44;position:relative;overflow:hidden;background-color:#0A0D18;background-image:radial-gradient(48% 48% at 10% 4%,rgba(62,47,158,0.647) 0%,rgba(62,47,158,0.356) 40%,rgba(62,47,158,0.129) 70%,rgba(62,47,158,0) 100%),radial-gradient(42% 42% at 82% 2%,rgba(29,90,168,0.471) 0%,rgba(29,90,168,0.259) 40%,rgba(29,90,168,0.094) 70%,rgba(29,90,168,0) 100%),radial-gradient(55% 55% at 96% 96%,rgba(42,47,122,0.412) 0%,rgba(42,47,122,0.227) 40%,rgba(42,47,122,0.082) 70%,rgba(42,47,122,0) 100%),radial-gradient(45% 45% at 26% 88%,rgba(20,69,110,0.314) 0%,rgba(20,69,110,0.173) 40%,rgba(20,69,110,0.063) 70%,rgba(20,69,110,0) 100%)">
+          <div style="position:absolute;left:10%;top:4%;width:8px;height:8px;border-radius:4px;border:1px solid #E8EBF5;margin:-4px 0 0 -4px"></div>
+          <div style="position:absolute;left:10%;top:4%;margin:8px 0 0 8px;font-size:12px;font-weight:600;color:#E8EBF5">S1</div>
+          <div style="position:absolute;left:82%;top:2%;width:8px;height:8px;border-radius:4px;border:1px solid #E8EBF5;margin:-4px 0 0 -4px"></div>
+          <div style="position:absolute;left:82%;top:2%;margin:8px 0 0 8px;font-size:12px;font-weight:600;color:#E8EBF5">S2</div>
+          <div style="position:absolute;left:96%;top:96%;width:8px;height:8px;border-radius:4px;border:1px solid #E8EBF5;margin:-4px 0 0 -4px"></div>
+          <div style="position:absolute;left:96%;top:96%;margin:-24px 0 0 -28px;font-size:12px;font-weight:600;color:#E8EBF5">S3</div>
+          <div style="position:absolute;left:26%;top:88%;width:8px;height:8px;border-radius:4px;border:1px solid #E8EBF5;margin:-4px 0 0 -4px"></div>
+          <div style="position:absolute;left:26%;top:88%;margin:-24px 0 0 8px;font-size:12px;font-weight:600;color:#E8EBF5">S4</div>
+        </div>
+        <div style="font-size:13px;color:#808AA8;margin-top:12px;width:560px">1280 × 800 at 44%. Two of the four spots are cut by the window edge on purpose — a whole visible circle would read as a decoration, half a circle reads as light.</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="motion" style="display:{{specDisplay}};margin-top:72px">
+    <div style="display:flex;align-items:baseline;gap:12px;padding-bottom:12px;border-bottom:1px solid #1A2033;margin-bottom:24px">
+      <span style="font-size:20px;font-weight:600">Shadows &amp; motion</span>
+      <span style="font-size:13px;color:#808AA8">Three shadows in the whole app. Nine animations, all single-property.</span>
+    </div>
+    <div style="display:flex;gap:32px;align-items:flex-start">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:600;color:#7FA6FF;letter-spacing:1.1px;margin-bottom:12px">SHADOWS — QGraphicsDropShadowEffect, EXHAUSTIVE LIST</div>
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead><tr>
+            <th style="text-align:left;padding:8px 12px;font-size:12px;font-weight:600;color:#808AA8;letter-spacing:0.8px;border-bottom:1px solid #232A44">WIDGET</th>
+            <th style="text-align:left;padding:8px 12px;font-size:12px;font-weight:600;color:#808AA8;letter-spacing:0.8px;border-bottom:1px solid #232A44">COLOR</th>
+            <th style="text-align:left;padding:8px 12px;font-size:12px;font-weight:600;color:#808AA8;letter-spacing:0.8px;border-bottom:1px solid #232A44">ALPHA</th>
+            <th style="text-align:left;padding:8px 12px;font-size:12px;font-weight:600;color:#808AA8;letter-spacing:0.8px;border-bottom:1px solid #232A44">BLUR</th>
+            <th style="text-align:left;padding:8px 12px;font-size:12px;font-weight:600;color:#808AA8;letter-spacing:0.8px;border-bottom:1px solid #232A44">OFFSET X / Y</th>
+          </tr></thead>
+          <tbody>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">Home hero card</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">#05070F</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">140</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">32</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">0 / 8</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">Primary button (every instance)</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">#0B1B47</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">120</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">14</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">0 / 3</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">Modal dialog</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">#04060D</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">190</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">48</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">0 / 16</td></tr>
+          </tbody>
+        </table>
+        <div style="font-size:13px;line-height:20px;color:#808AA8;margin-top:12px">Cards, tables, the console, the sidebar, inputs, pills and row actions have <span style="color:#E8EBF5">no shadow at all</span> — depth there comes from the fill step (#0A0D18 → #151A2E) and the 1px hairline. On the pressed state the primary button drops its shadow rather than moving.</div>
+      </div>
+      <div style="flex:1.2;min-width:0">
+        <div style="font-size:12px;font-weight:600;color:#7FA6FF;letter-spacing:1.1px;margin-bottom:12px">ANIMATIONS — PROPERTY, DURATION, QT CURVE</div>
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead><tr>
+            <th style="text-align:left;padding:8px 12px;font-size:12px;font-weight:600;color:#808AA8;letter-spacing:0.8px;border-bottom:1px solid #232A44">WHAT MOVES</th>
+            <th style="text-align:left;padding:8px 12px;font-size:12px;font-weight:600;color:#808AA8;letter-spacing:0.8px;border-bottom:1px solid #232A44">FROM → TO</th>
+            <th style="text-align:left;padding:8px 12px;font-size:12px;font-weight:600;color:#808AA8;letter-spacing:0.8px;border-bottom:1px solid #232A44;width:72px">MS</th>
+            <th style="text-align:left;padding:8px 12px;font-size:12px;font-weight:600;color:#808AA8;letter-spacing:0.8px;border-bottom:1px solid #232A44;width:104px">CURVE</th>
+          </tr></thead>
+          <tbody>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">Progress chunk width</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">previous % → new %</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">240</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">OutCubic</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">Percent label value</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">int → int (QVariantAnimation)</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">240</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">Linear</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">Nav active indicator</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">y of the 3×20 bar</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">180</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">InOutQuad</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">Page switch</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">page x: +24px → 0</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">200</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">OutCubic</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">Modal appear</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">geometry 92% → 100% of final rect</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">180</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">OutBack</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">Modal backdrop</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">windowOpacity 0 → 1 (top-level, not a QSS opacity)</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">150</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">Linear</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">Hero tile recolour</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">QColor fill + border, verdict → verdict</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">220</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">InOutQuad</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">Toggle knob</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">x 4 → 24 (+ track colour, same timing)</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">140</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">InOutQuad</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">Row actions going disabled</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">label + border colour crossfade</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">120</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">Linear</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5">“Checking…” ellipsis</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">1 → 3 dots, QTimer, fixed cell width</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">400/frame</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4;font-family:'Cascadia Mono',Consolas,monospace">Linear</td></tr>
+          </tbody>
+        </table>
+        <div style="font-size:13px;line-height:20px;color:#808AA8;margin-top:12px">Hover and press are instant — a security tool should not feel springy. Nothing animates during a scan except the progress pair, so the eye is not pulled away from the counters.</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="icons" style="display:{{specDisplay}};margin-top:72px">
+    <div style="display:flex;align-items:baseline;gap:12px;padding-bottom:12px;border-bottom:1px solid #1A2033;margin-bottom:24px">
+      <span style="font-size:20px;font-weight:600">Icons</span>
+      <span style="font-size:13px;color:#808AA8">viewBox 24×24, stroke 1.75, no fill, no gradient, currentColor, round caps and joins. Rendered at 15 / 16 / 18 / 28 / 32 / 46px.</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
+      <div style="display:flex;gap:16px;align-items:flex-start;padding:16px;border-radius:12px;background:#0D1120;border:1px solid #232A44">
+        <div style="width:40px;height:40px;flex:none;border-radius:8px;background:#151A2E;border:1px solid #262C44;color:#E8EBF5;display:flex;align-items:center;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2 19.2 6v6.1c0 4.1-2.9 7.2-7.2 8.7-4.3-1.5-7.2-4.6-7.2-8.7V6L12 3.2Z"></path></svg></div>
+        <div style="min-width:0"><div style="font-size:13px;font-weight:600;color:#E8EBF5">shield</div><div style="font-family:'Cascadia Mono',Consolas,monospace;font-size:12px;line-height:18px;color:#808AA8;word-break:break-all">d="M12 3.2 19.2 6v6.1c0 4.1-2.9 7.2-7.2 8.7-4.3-1.5-7.2-4.6-7.2-8.7V6L12 3.2Z"</div></div>
+      </div>
+      <div style="display:flex;gap:16px;align-items:flex-start;padding:16px;border-radius:12px;background:#0D1120;border:1px solid #232A44">
+        <div style="width:40px;height:40px;flex:none;border-radius:8px;background:#151A2E;border:1px solid #262C44;color:#58D6A6;display:flex;align-items:center;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2 19.2 6v6.1c0 4.1-2.9 7.2-7.2 8.7-4.3-1.5-7.2-4.6-7.2-8.7V6L12 3.2Z"></path><path d="m8.9 11.9 2.3 2.3 4.1-4.4"></path></svg></div>
+        <div style="min-width:0"><div style="font-size:13px;font-weight:600;color:#E8EBF5">shield-check</div><div style="font-family:'Cascadia Mono',Consolas,monospace;font-size:12px;line-height:18px;color:#808AA8;word-break:break-all">shield + d="m8.9 11.9 2.3 2.3 4.1-4.4"</div></div>
+      </div>
+      <div style="display:flex;gap:16px;align-items:flex-start;padding:16px;border-radius:12px;background:#0D1120;border:1px solid #232A44">
+        <div style="width:40px;height:40px;flex:none;border-radius:8px;background:#151A2E;border:1px solid #262C44;color:#E8EBF5;display:flex;align-items:center;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.2"></circle><path d="m15.6 15.6 4.4 4.4"></path></svg></div>
+        <div style="min-width:0"><div style="font-size:13px;font-weight:600;color:#E8EBF5">magnifier</div><div style="font-family:'Cascadia Mono',Consolas,monospace;font-size:12px;line-height:18px;color:#808AA8;word-break:break-all">circle 11,11 r6.2 + d="m15.6 15.6 4.4 4.4"</div></div>
+      </div>
+      <div style="display:flex;gap:16px;align-items:flex-start;padding:16px;border-radius:12px;background:#0D1120;border:1px solid #232A44">
+        <div style="width:40px;height:40px;flex:none;border-radius:8px;background:#151A2E;border:1px solid #262C44;color:#FF9A52;display:flex;align-items:center;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4.4 21 19.6H3L12 4.4Z"></path><path d="M12 9.8v4.4"></path><path d="M12 17h.01"></path></svg></div>
+        <div style="min-width:0"><div style="font-size:13px;font-weight:600;color:#E8EBF5">warning</div><div style="font-family:'Cascadia Mono',Consolas,monospace;font-size:12px;line-height:18px;color:#808AA8;word-break:break-all">d="M12 4.4 21 19.6H3L12 4.4Z" + "M12 9.8v4.4" + "M12 17h.01"</div></div>
+      </div>
+      <div style="display:flex;gap:16px;align-items:flex-start;padding:16px;border-radius:12px;background:#0D1120;border:1px solid #232A44">
+        <div style="width:40px;height:40px;flex:none;border-radius:8px;background:#151A2E;border:1px solid #262C44;color:#E8EBF5;display:flex;align-items:center;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.4 12 4.4l8 4v7.2L12 19.6 4 15.6V8.4Z"></path><path d="M4 8.4 12 12.4l8-4"></path><path d="M12 12.4v7.2"></path></svg></div>
+        <div style="min-width:0"><div style="font-size:13px;font-weight:600;color:#E8EBF5">box (quarantine)</div><div style="font-family:'Cascadia Mono',Consolas,monospace;font-size:12px;line-height:18px;color:#808AA8;word-break:break-all">d="M4 8.4 12 4.4l8 4v7.2L12 19.6 4 15.6V8.4Z" + "M4 8.4 12 12.4l8-4" + "M12 12.4v7.2"</div></div>
+      </div>
+      <div style="display:flex;gap:16px;align-items:flex-start;padding:16px;border-radius:12px;background:#0D1120;border:1px solid #232A44">
+        <div style="width:40px;height:40px;flex:none;border-radius:8px;background:#151A2E;border:1px solid #262C44;color:#E8EBF5;display:flex;align-items:center;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7h12M8 12h12M8 17h12"></path><path d="M4 7h.01M4 12h.01M4 17h.01"></path></svg></div>
+        <div style="min-width:0"><div style="font-size:13px;font-weight:600;color:#E8EBF5">list (logs)</div><div style="font-family:'Cascadia Mono',Consolas,monospace;font-size:12px;line-height:18px;color:#808AA8;word-break:break-all">d="M8 7h12M8 12h12M8 17h12" + "M4 7h.01M4 12h.01M4 17h.01"</div></div>
+      </div>
+      <div style="display:flex;gap:16px;align-items:flex-start;padding:16px;border-radius:12px;background:#0D1120;border:1px solid #232A44">
+        <div style="width:40px;height:40px;flex:none;border-radius:8px;background:#151A2E;border:1px solid #262C44;color:#E8EBF5;display:flex;align-items:center;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"></circle><circle cx="12" cy="12" r="8.4"></circle><path d="M12 3.6v2.4M12 18v2.4M4.9 7.9l2.1 1.2M17 14.9l2.1 1.2M4.9 16.1l2.1-1.2M17 9.1l2.1-1.2"></path></svg></div>
+        <div style="min-width:0"><div style="font-size:13px;font-weight:600;color:#E8EBF5">gear</div><div style="font-family:'Cascadia Mono',Consolas,monospace;font-size:12px;line-height:18px;color:#808AA8;word-break:break-all">circle r3.2 + circle r8.4 + d="M12 3.6v2.4M12 18v2.4M4.9 7.9l2.1 1.2M17 14.9l2.1 1.2M4.9 16.1l2.1-1.2M17 9.1l2.1-1.2"</div></div>
+      </div>
+      <div style="display:flex;gap:16px;align-items:flex-start;padding:16px;border-radius:12px;background:#0D1120;border:1px solid #232A44">
+        <div style="width:40px;height:40px;flex:none;border-radius:8px;background:#151A2E;border:1px solid #262C44;color:#58D6A6;display:flex;align-items:center;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.8 9.6 17.4 19 8"></path></svg></div>
+        <div style="min-width:0"><div style="font-size:13px;font-weight:600;color:#E8EBF5">check</div><div style="font-family:'Cascadia Mono',Consolas,monospace;font-size:12px;line-height:18px;color:#808AA8;word-break:break-all">d="M5 12.8 9.6 17.4 19 8"</div></div>
+      </div>
+      <div style="display:flex;gap:16px;align-items:flex-start;padding:16px;border-radius:12px;background:#0D1120;border:1px solid #232A44">
+        <div style="width:40px;height:40px;flex:none;border-radius:8px;background:#151A2E;border:1px solid #262C44;color:#FF6A78;display:flex;align-items:center;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6.4 6.4 17.6 17.6M17.6 6.4 6.4 17.6"></path></svg></div>
+        <div style="min-width:0"><div style="font-size:13px;font-weight:600;color:#E8EBF5">cross</div><div style="font-family:'Cascadia Mono',Consolas,monospace;font-size:12px;line-height:18px;color:#808AA8;word-break:break-all">d="M6.4 6.4 17.6 17.6M17.6 6.4 6.4 17.6"</div></div>
+      </div>
+      <div style="display:flex;gap:16px;align-items:flex-start;padding:16px;border-radius:12px;background:#0D1120;border:1px solid #232A44">
+        <div style="width:40px;height:40px;flex:none;border-radius:8px;background:#151A2E;border:1px solid #262C44;color:#E8EBF5;display:flex;align-items:center;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 4.6v4.4h-4.4"></path><path d="M19.5 12A7.5 7.5 0 1 1 17.3 6.7"></path></svg></div>
+        <div style="min-width:0"><div style="font-size:13px;font-weight:600;color:#E8EBF5">refresh</div><div style="font-family:'Cascadia Mono',Consolas,monospace;font-size:12px;line-height:18px;color:#808AA8;word-break:break-all">d="M20 4.6v4.4h-4.4" + "M19.5 12A7.5 7.5 0 1 1 17.3 6.7"</div></div>
+      </div>
+      <div style="display:flex;gap:16px;align-items:flex-start;padding:16px;border-radius:12px;background:#0D1120;border:1px solid #232A44">
+        <div style="width:40px;height:40px;flex:none;border-radius:8px;background:#151A2E;border:1px solid #262C44;color:#E8EBF5;display:flex;align-items:center;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3.8 7.2c0-1 .8-1.8 1.8-1.8h3.1l2 2.4h7.7c1 0 1.8.8 1.8 1.8v7.4c0 1-.8 1.8-1.8 1.8H5.6c-1 0-1.8-.8-1.8-1.8V7.2Z"></path></svg></div>
+        <div style="min-width:0"><div style="font-size:13px;font-weight:600;color:#E8EBF5">folder</div><div style="font-family:'Cascadia Mono',Consolas,monospace;font-size:12px;line-height:18px;color:#808AA8;word-break:break-all">d="M3.8 7.2c0-1 .8-1.8 1.8-1.8h3.1l2 2.4h7.7c1 0 1.8.8 1.8 1.8v7.4c0 1-.8 1.8-1.8 1.8H5.6c-1 0-1.8-.8-1.8-1.8V7.2Z"</div></div>
+      </div>
+      <div style="display:flex;gap:16px;align-items:flex-start;padding:16px;border-radius:12px;background:#0D1120;border:1px solid #232A44">
+        <div style="width:40px;height:40px;flex:none;border-radius:8px;background:#151A2E;border:1px solid #262C44;color:#E8EBF5;display:flex;align-items:center;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4.8 7.4h14.4"></path><path d="M9.4 7.4V5.2h5.2v2.2"></path><path d="M6.8 7.4l.8 12c0 .8.7 1.4 1.5 1.4h5.8c.8 0 1.5-.6 1.5-1.4l.8-12"></path><path d="M10.4 11v6M13.6 11v6"></path></svg></div>
+        <div style="min-width:0"><div style="font-size:13px;font-weight:600;color:#E8EBF5">trash</div><div style="font-family:'Cascadia Mono',Consolas,monospace;font-size:12px;line-height:18px;color:#808AA8;word-break:break-all">d="M4.8 7.4h14.4" + "M9.4 7.4V5.2h5.2v2.2" + "M6.8 7.4l.8 12c0 .8.7 1.4 1.5 1.4h5.8c.8 0 1.5-.6 1.5-1.4l.8-12" + "M10.4 11v6M13.6 11v6"</div></div>
+      </div>
+      <div style="display:flex;gap:16px;align-items:flex-start;padding:16px;border-radius:12px;background:#0D1120;border:1px solid #232A44">
+        <div style="width:40px;height:40px;flex:none;border-radius:8px;background:#151A2E;border:1px solid #262C44;color:#E8EBF5;display:flex;align-items:center;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.6v4.4h4.4"></path><path d="M4.5 12A7.5 7.5 0 1 0 6.7 6.7"></path></svg></div>
+        <div style="min-width:0"><div style="font-size:13px;font-weight:600;color:#E8EBF5">restore-arrow</div><div style="font-family:'Cascadia Mono',Consolas,monospace;font-size:12px;line-height:18px;color:#808AA8;word-break:break-all">d="M4 4.6v4.4h4.4" + "M4.5 12A7.5 7.5 0 1 0 6.7 6.7"</div></div>
+      </div>
+    </div>
+    <div style="font-size:13px;line-height:20px;color:#808AA8;margin-top:16px">Ship them as SVG resources loaded through QIcon / QtSvg, not as an icon font — an icon font would break the “no web fonts” rule and lose currentColor. Recolour by rendering the SVG with the palette colour, or keep one SVG per state colour in the resource file.</div>
+  </div>
+
+  <div id="limits" style="display:{{specDisplay}};margin-top:72px">
+    <div style="display:flex;align-items:baseline;gap:12px;padding-bottom:12px;border-bottom:1px solid #1A2033;margin-bottom:24px">
+      <span style="font-size:20px;font-weight:600">Where this artifact leaves QSS</span>
+      <span style="font-size:13px;color:#808AA8">Complete list. Everything not named here is expressible in QSS as written.</span>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead><tr>
+        <th style="text-align:left;padding:8px 12px;font-size:12px;font-weight:600;color:#808AA8;letter-spacing:0.8px;border-bottom:1px solid #232A44;width:200px">IN THE ARTIFACT</th>
+        <th style="text-align:left;padding:8px 12px;font-size:12px;font-weight:600;color:#808AA8;letter-spacing:0.8px;border-bottom:1px solid #232A44;width:300px">WHERE</th>
+        <th style="text-align:left;padding:8px 12px;font-size:12px;font-weight:600;color:#808AA8;letter-spacing:0.8px;border-bottom:1px solid #232A44">IN QT</th>
+      </tr></thead>
+      <tbody>
+        <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5;font-family:'Cascadia Mono',Consolas,monospace">display:flex / grid, gap</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">Every row, column and card layout in the mockups</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">QHBoxLayout / QVBoxLayout / QGridLayout with setSpacing() and setContentsMargins() — the numbers are the same spacing tokens</td></tr>
+        <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5;font-family:'Cascadia Mono',Consolas,monospace">box-shadow</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">Hero card, primary buttons, both modals — nowhere else</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">QGraphicsDropShadowEffect with the three parameter sets in the shadow table</td></tr>
+        <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5;font-family:'Cascadia Mono',Consolas,monospace">4 stacked background-image gradients</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">Window background of all six frames</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">paintEvent + four QRadialGradient passes (QSS allows only one gradient per widget) — as the brief specifies, drawn in code</td></tr>
+        <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5;font-family:'Cascadia Mono',Consolas,monospace">text-overflow:ellipsis</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">Name / Source / Original location cells, scan path line</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">QTableView::setTextElideMode(Qt::ElideRight); free labels use QFontMetrics::elidedText</td></tr>
+        <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5;font-family:'Cascadia Mono',Consolas,monospace">letter-spacing</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">Overlines (+1.1), table headers (+0.8), pills (+0.4), key dots (+2)</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">QFont::setLetterSpacing(QFont::AbsoluteSpacing, px) on those widgets</td></tr>
+        <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5;font-family:'Cascadia Mono',Consolas,monospace">position:absolute</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">3×20 active-nav indicator, modal backdrop stack</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">A child QFrame moved with QPropertyAnimation on pos; the backdrop is a frameless translucent widget over the main window</td></tr>
+        <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5;font-family:'Cascadia Mono',Consolas,monospace">overflow:hidden clipping children to a 12px radius</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">Table cards — the header fill is clipped by the card corners</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">Qt does not clip children to a rounded parent. Give the card 1px padding, style QHeaderView::section with border-top-left/right-radius 11px, and leave the last row square</td></tr>
+        <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5;font-family:'Cascadia Mono',Consolas,monospace">border-radius on the window</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">8px corners of each 1280×800 frame</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">Windows 11 rounds top-level windows itself (DWM). Do not fake it in QSS</td></tr>
+        <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5;font-family:'Cascadia Mono',Consolas,monospace">linear-gradient(90deg, …)</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">Progress chunk</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">Direct equivalent: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #3E6FD9, stop:1 #6E8CF0)</td></tr>
+        <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5;font-family:'Cascadia Mono',Consolas,monospace">::-webkit-scrollbar</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">Log console scrollbar in this document</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">QScrollBar QSS below — a real subcontrol API, closer to Qt than to CSS</td></tr>
+        <tr><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#E8EBF5;font-family:'Cascadia Mono',Consolas,monospace">sticky nav, anchors, spec sheets</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">This document's own chrome, outside the six frames</td><td style="padding:8px 12px;border-bottom:1px solid #161B2B;color:#A2AAC4">Not part of the app — nothing to port</td></tr>
+      </tbody>
+    </table>
+    <div style="font-size:13px;line-height:20px;color:#A2AAC4;margin-top:20px">The three widgets whose QSS is easy to get wrong:</div>
+    <div style="margin-top:8px;padding:20px;border-radius:12px;background:#0D1120;border:1px solid #262C44;font-family:'Cascadia Mono',Consolas,monospace;font-size:13px;line-height:20px;color:#C7D0E6;white-space:pre;overflow-x:auto">QTableView
+    background-color: transparent; border: none;
+    gridline-color: transparent;                /* rows are separated by the item border-bottom */
+    selection-background-color: #1B2340; selection-color: #E8EBF5;
+    color: #E8EBF5; font-size: 14px;
+QTableView::item
+    padding: 0 16px; border-bottom: 1px solid #1D2338;   /* no border-radius on cells */
+QTableView::item:hover
+    background-color: #171D33;
+QHeaderView::section
+    background-color: #101426; color: #808AA8;
+    font-size: 12px; font-weight: 600; padding: 0 16px;
+    height: 40px; border: none; border-bottom: 1px solid #262C44;
+
+QScrollBar:vertical
+    background: #0E1224; width: 10px; margin: 0; border-radius: 5px;
+QScrollBar::handle:vertical
+    background: #2E3654; border-radius: 5px; min-height: 32px;
+QScrollBar::handle:vertical:hover
+    background: #3C4670;
+QScrollBar::handle:vertical:pressed
+    background: #4A557F;
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical
+    height: 0;
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical
+    background: transparent;
+
+QPushButton#primary
+    background-color: #3E6FD9; color: #FFFFFF;
+    border: 1px solid transparent;              /* transparent 1px = focus never shifts layout */
+    border-radius: 8px; padding: 0 20px; min-height: 40px;
+    font-size: 13px; font-weight: 600;
+QPushButton#primary:hover
+    background-color: #4C7DEA;
+QPushButton#primary:pressed
+    background-color: #3260C0;
+QPushButton#primary:disabled
+    background-color: #1A2140; border-color: #2A3150; color: #5A6280;
+QPushButton#primary:focus
+    border-color: #9DBBFF;</div>
+    <div style="font-size:13px;line-height:20px;color:#808AA8;margin-top:12px">Braces are omitted above only so this block stays readable inside the document; the property order and every value are final.</div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;heroState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;protected&quot;,&quot;threats&quot;,&quot;critical&quot;],&quot;default&quot;:&quot;threats&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Demo state&quot;},&quot;showSpecSheets&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Document&quot;},&quot;showQssNotes&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Document&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const state = this.props.heroState || "threats";
+    const map = {
+      protected: {
+        heroTitle: "System is protected",
+        heroSub: "Last scan: today at 14:32 · 128 540 objects checked · nothing suspicious found",
+        heroTileBg: "#122A22", heroTileBorder: "#2C6B52", heroIconColor: "#58D6A6",
+        metricThreats: "0", metricThreatColor: "#E8EBF5", metricThreatsSub: "No action required"
+      },
+      threats: {
+        heroTitle: "Threats detected",
+        heroSub: "Last scan: today at 14:32 · 128 540 objects checked · 7 threats, 2 of them critical",
+        heroTileBg: "#3A2413", heroTileBorder: "#7A4A22", heroIconColor: "#FF9A52",
+        metricThreats: "7", metricThreatColor: "#FF9A52", metricThreatsSub: "2 critical · 2 high · 3 lower"
+      },
+      critical: {
+        heroTitle: "Critical threats detected!",
+        heroSub: "Last scan: today at 14:32 · 128 540 objects checked · 12 threats, 5 of them critical",
+        heroTileBg: "#3A1420", heroTileBorder: "#7A2434", heroIconColor: "#FF6A78",
+        metricThreats: "12", metricThreatColor: "#FF6A78", metricThreatsSub: "5 critical · 4 high · 3 lower"
+      }
+    };
+    const v = map[state] || map.threats;
+    return Object.assign({}, v, {
+      isProtected: state === "protected",
+      isAlarm: state !== "protected",
+      specDisplay: this.props.showSpecSheets === false ? "none" : "block",
+      noteDisplay: this.props.showQssNotes === false ? "none" : "inline-flex"
+    });
+  }
+}
+</script>
+</body>
+</html>

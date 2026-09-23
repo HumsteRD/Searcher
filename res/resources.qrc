@@ -1,0 +1,24 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+    <qresource prefix="/">
+        <!-- Фон окна теперь рисуется параметрически в BackgroundWidget,
+             растровая подложка больше не нужна. -->
+        <file alias="app.ico">icons/app.ico</file>
+        <file alias="mascot.svg">icons/mascot.svg</file>
+        <file alias="icon.svg">icons/icon.svg</file>
+        <file alias="icon-small.svg">icons/icon-small.svg</file>
+
+        <file alias="glyph-clean.svg">icons/glyph-clean.svg</file>
+        <file alias="glyph-threat.svg">icons/glyph-threat.svg</file>
+        <file alias="glyph-critical.svg">icons/glyph-critical.svg</file>
+        <file alias="glyph-scanning.svg">icons/glyph-scanning.svg</file>
+        <file alias="glyph-quarantine.svg">icons/glyph-quarantine.svg</file>
+        <file alias="glyph-deleted.svg">icons/glyph-deleted.svg</file>
+        <file alias="glyph-ignored.svg">icons/glyph-ignored.svg</file>
+        <file alias="glyph-net-error.svg">icons/glyph-net-error.svg</file>
+        <file alias="glyph-key-ok.svg">icons/glyph-key-ok.svg</file>
+        <file alias="glyph-registry.svg">icons/glyph-registry.svg</file>
+        <file alias="glyph-files.svg">icons/glyph-files.svg</file>
+        <file alias="glyph-schedule.svg">icons/glyph-schedule.svg</file>
+    </qresource>
+</RCC>

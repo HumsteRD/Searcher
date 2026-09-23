@@ -1,0 +1,8 @@
+build/
+build-*/
+dist/
+release/
+out/
+*.user
+*.aps
+.vs/
