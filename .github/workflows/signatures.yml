@@ -1,0 +1,36 @@
+# Еженедельная сборка базы хэшей из MalwareBazaar.
+# Программа скачивает base.tsdb из релиза signatures-latest
+# (src/app/SignatureUpdater.cpp). Релиз помечен как пре-релиз, чтобы
+# не стать «последним» — иначе проверка обновлений программы
+# (releases/latest) увидит его вместо версии программы.
+name: signatures
+
+on:
+  schedule:
+    - cron: "0 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build base.tsdb
+        run: |
+          curl -sSfL -A ThreatScanner-build -o full.zip https://bazaar.abuse.ch/export/csv/full/
+          python tools/sigdb/build_sigdb.py full.zip base.tsdb
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view signatures-latest >/dev/null 2>&1; then
+            gh release create signatures-latest --prerelease --latest=false \
+              --title "Signatures" --notes "База хэшей MalwareBazaar для Threat Scanner. Обновляется раз в неделю."
+          fi
+          gh release upload signatures-latest base.tsdb --clobber

@@ -194,7 +194,9 @@ void HomePage::refresh() {
     const int pending = st.pendingCount();
     const auto& records = ScanHistory::instance().records();
     const ScanRecord* last = nullptr;
-    for (const ScanRecord& r : records) if (r.mode != 3) { last = &r; break; }
+    // Состояние системы — по проверкам системы: проверка одного файла или
+    // песочница не говорят ничего о том, чисто ли всё остальное.
+    for (const ScanRecord& r : records) if (r.mode != 3 && r.target.isEmpty()) { last = &r; break; }
 
     QObject::disconnect(primaryConn_);
     QObject::disconnect(secondaryConn_);

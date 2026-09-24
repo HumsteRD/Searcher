@@ -8,6 +8,7 @@
 #include <QLocalSocket>
 #include <QStyleFactory>
 #include <QTextStream>
+#include <QTimer>
 
 #include "app/Automation.h"
 #include "app/DemoData.h"
@@ -72,15 +73,22 @@ int main(int argc, char* argv[]) {
         return 0;
     }
 
-    // Один экземпляр на пользователя: второй запуск (ярлык, автозапуск)
-    // показывает уже открытое окно, а не поднимает вторую копию с трей-иконкой.
+    // Файлы из контекстного меню проводника: --check <путь> [<путь>...].
+    QStringList toCheck;
+    const int checkAt = args.indexOf("--check");
+    if (checkAt >= 0) toCheck = args.mid(checkAt + 1);
+
+    // Один экземпляр на пользователя: второй запуск (ярлык, автозапуск,
+    // «Проверить в Threat Scanner») передаёт работу уже открытому окну.
     const QString key = InstanceKey();
     {
         QLocalSocket probe;
         probe.connectToServer(key);
         if (probe.waitForConnected(300)) {
-            probe.write("show\n");
-            probe.waitForBytesWritten(300);
+            QByteArray message = "show\n";
+            for (const QString& f : toCheck) message += "check\t" + f.toUtf8() + "\n";
+            probe.write(message);
+            probe.waitForBytesWritten(1000);
             return 0;
         }
     }
@@ -92,10 +100,18 @@ int main(int argc, char* argv[]) {
     MainWindow window;
     QObject::connect(&server, &QLocalServer::newConnection, &window, [&server, &window]() {
         while (QLocalSocket* s = server.nextPendingConnection()) {
-            s->deleteLater();
-            window.showNormal();
-            window.raise();
-            window.activateWindow();
+            QObject::connect(s, &QLocalSocket::readyRead, &window, [s, &window]() {
+                QStringList files;
+                while (s->canReadLine()) {
+                    const QString line = QString::fromUtf8(s->readLine()).trimmed();
+                    if (line.startsWith("check\t")) files << line.mid(6);
+                }
+                window.showNormal();
+                window.raise();
+                window.activateWindow();
+                if (!files.isEmpty()) window.checkFiles(files);
+            });
+            QObject::connect(s, &QLocalSocket::disconnected, s, &QObject::deleteLater);
         }
     });
 
@@ -103,5 +119,8 @@ int main(int argc, char* argv[]) {
     // тогда оно просто открывается свёрнутым в панель задач.
     if (!args.contains("--minimized")) window.show();
     else if (!Automation::trayEnabled()) window.showMinimized();
+    if (!toCheck.isEmpty()) {
+        QTimer::singleShot(300, &window, [&window, toCheck]() { window.checkFiles(toCheck); });
+    }
     return app.exec();
 }
