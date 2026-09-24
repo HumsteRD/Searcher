@@ -1,314 +1,297 @@
 #include "PersistenceScanner.h"
+#include "CommandTarget.h"
+#include "Detections.h"
 #include "Logger.h"
-#include "Lang.h"
-#include "SignatureVerifier.h"
-#include "PublisherWhitelist.h"
+
+#include "../engine/FileAnalyzer.h"
 
 #include <Windows.h>
 #include <comdef.h>
 #include <Wbemidl.h>
 
+#include <algorithm>
+#include <cwctype>
+#include <filesystem>
 #include <fstream>
 #include <sstream>
-#include <algorithm>
-#include <filesystem>
 #include <vector>
 
 #pragma comment(lib, "wbemuuid.lib")
 
 namespace fs = std::filesystem;
+using Detections::Reason;
+using Detections::Utf8;
 
 namespace {
 
-std::string WideToUtf8(const std::wstring& w) {
-    if (w.empty()) return {};
-    int n = WideCharToMultiByte(CP_UTF8, 0, w.data(), (int)w.size(),
-                                nullptr, 0, nullptr, nullptr);
-    std::string out(n, '\0');
-    WideCharToMultiByte(CP_UTF8, 0, w.data(), (int)w.size(),
-                        out.data(), n, nullptr, nullptr);
-    return out;
-}
-
-std::wstring ToLower(std::wstring s) {
+std::wstring Lower(std::wstring s) {
     std::transform(s.begin(), s.end(), s.begin(),
-                   [](wchar_t c) { return (wchar_t)towlower(c); });
+                   [](wchar_t c) { return static_cast<wchar_t>(std::towlower(c)); });
     return s;
 }
 
-// Домены, перенаправление которых почти всегда означает попытку
-// отрезать машину от антивирусов и обновлений.
-bool IsSecurityDomain(const std::wstring& hostLower) {
-    static const wchar_t* kMarkers[] = {
-        L"microsoft.com", L"windowsupdate", L"defender", L"virustotal",
-        L"kaspersky", L"drweb", L"avast", L"avira", L"eset", L"nod32",
-        L"malwarebytes", L"bitdefender", L"sophos", L"mcafee", L"norton",
-        L"symantec", L"antivirus", L"virus",
+std::wstring ServiceDll(const std::wstring& service) {
+    const std::wstring sub = L"SYSTEM\\CurrentControlSet\\Services\\" + service + L"\\Parameters";
+    wchar_t buf[1024] = {};
+    DWORD size = sizeof(buf);
+    if (RegGetValueW(HKEY_LOCAL_MACHINE, sub.c_str(), L"ServiceDll",
+                     RRF_RT_REG_SZ | RRF_RT_REG_EXPAND_SZ, nullptr, buf, &size) != ERROR_SUCCESS)
+        return {};
+    return CommandTarget::NormalizeImagePath(buf);
+}
+
+bool IsLoopback(const std::string& ip) {
+    return ip == "127.0.0.1" || ip == "0.0.0.0" || ip == "::1" || ip == "::" || ip.rfind("127.", 0) == 0;
+}
+
+bool EndsWithDomain(const std::string& host, const char* domain) {
+    const size_t n = std::strlen(domain);
+    if (host.size() < n) return false;
+    if (host.compare(host.size() - n, n, domain) != 0) return false;
+    return host.size() == n || host[host.size() - n - 1] == '.';
+}
+
+// Домены защиты и обновлений: их блокировка отрезает машину от баз
+// и заплаток. Телеметрию Microsoft здесь нет намеренно — её блокируют
+// честные программы «приватности», и это не повод бить тревогу.
+bool IsSecurityDomain(const std::string& host) {
+    static const char* kDomains[] = {
+        "kaspersky.com", "kaspersky.ru", "drweb.com", "drweb.ru", "eset.com", "avast.com",
+        "avg.com", "avira.com", "malwarebytes.com", "bitdefender.com", "sophos.com",
+        "mcafee.com", "norton.com", "symantec.com", "virustotal.com", "windowsupdate.com",
+        "update.microsoft.com", "download.windowsupdate.com", "definitionupdates.microsoft.com",
+        "wdcp.microsoft.com", "wd.microsoft.com", "go.microsoft.com", "esetnod32.ru",
     };
-    for (const wchar_t* m : kMarkers) {
-        if (hostLower.find(m) != std::wstring::npos) return true;
-    }
+    for (const char* d : kDomains)
+        if (EndsWithDomain(host, d)) return true;
     return false;
 }
 
-// Служба, живущая во временной или пользовательской папке, — подозрительно.
-//
-// ProgramData из списка убран намеренно: там законно живут Microsoft Defender,
-// драйверы NVIDIA и половина установленного софта. Одного расположения мало.
-bool IsSuspiciousServicePath(const std::wstring& pathLower) {
-    static const wchar_t* kBad[] = {
-        L"\\appdata\\local\\temp\\", L"\\windows\\temp\\",
-        L"\\users\\public\\", L"\\downloads\\", L"\\recycle",
+// Популярные сайты, подмена адреса которых — классический фишинг.
+bool IsPopularSite(const std::string& host) {
+    static const char* kSites[] = {
+        "google.com", "youtube.com", "facebook.com", "vk.com", "ok.ru", "mail.ru", "yandex.ru",
+        "sberbank.ru", "tinkoff.ru", "paypal.com", "steamcommunity.com", "steampowered.com",
+        "discord.com", "telegram.org", "instagram.com", "twitter.com", "x.com", "github.com",
+        "microsoft.com", "live.com", "apple.com", "gosuslugi.ru", "binance.com",
     };
-    for (const wchar_t* b : kBad) {
-        if (pathLower.find(b) != std::wstring::npos) return true;
-    }
+    for (const char* d : kSites)
+        if (EndsWithDomain(host, d)) return true;
     return false;
-}
-
-// Путь к образу службы бывает с кавычками и аргументами:
-//   "C:\Program Files\X\svc.exe" -k netsvcs
-// Для проверки подписи нужен именно файл.
-std::wstring ExtractImagePath(const std::wstring& cmdline) {
-    std::wstring s = cmdline;
-    if (!s.empty() && s.front() == L'"') {
-        const size_t close = s.find(L'"', 1);
-        if (close != std::wstring::npos) return s.substr(1, close - 1);
-    }
-    const size_t exe = ToLower(s).find(L".exe");
-    if (exe != std::wstring::npos) return s.substr(0, exe + 4);
-    return s;
-}
-
-// Файл, подписанный доверенным издателем, угрозой не считаем.
-// Это отсекает Microsoft, NVIDIA и сторонние антивирусы: их присутствие
-// в системе нормально, а пометка их «угрозой» подрывает доверие
-// ко всему инструменту — пользователь может удалить рабочую защиту.
-bool IsTrustedBinary(const std::wstring& imagePath) {
-    if (imagePath.empty()) return false;
-
-    std::error_code ec;
-    if (!fs::exists(imagePath, ec)) return false;
-
-    const auto sig = SignatureVerifier::Verify(imagePath);
-    if (!sig.valid || sig.publisher.empty()) return false;
-
-    return PublisherWhitelist::Get().IsTrusted(sig.publisher);
 }
 
 } // namespace
 
-// ─────────────────────────── hosts ───────────────────────────
-
-void PersistenceScanner::ScanHosts(IReportSink& sink) {
-    wchar_t sysDir[MAX_PATH]{};
-    if (!GetSystemDirectoryW(sysDir, MAX_PATH)) return;
-
-    const fs::path hosts =
-        fs::path(sysDir) / L"drivers" / L"etc" / L"hosts";
-
-    std::ifstream in(hosts);
-    if (!in) return;
-
-    std::string line;
-    int lineNo = 0;
-
-    while (std::getline(in, line)) {
-        ++lineNo;
-
-        // Комментарии и пустые строки не интересуют.
-        const size_t firstChar = line.find_first_not_of(" \t");
-        if (firstChar == std::string::npos || line[firstChar] == '#') continue;
-
-        std::istringstream ss(line.substr(firstChar));
-        std::string ip, host;
-        ss >> ip >> host;
-        if (host.empty()) continue;
-
-        const std::wstring hostW = ToLower(
-            std::wstring(host.begin(), host.end()));
-        if (!IsSecurityDomain(hostW)) continue;
-
-        Threat t;
-        t.kind        = ThreatKind::File;
-        t.category    = ThreatCategory::Other;
-        t.severity    = Severity::Critical;
-        t.name        = std::wstring(host.begin(), host.end());
-        t.source      = hosts.wstring() + L" : " + std::to_wstring(lineNo);
-        t.description = TR("The hosts file redirects a security or update "
-                           "domain — this is how malware cuts the machine off "
-                           "from antivirus updates.").toStdWString();
-        t.suggestion  = TR("Open the hosts file and remove this line if you "
-                           "did not add it yourself.").toStdWString();
-        t.filePath    = hosts.wstring();
-
-        sink.Report(t);
-        Logger::Instance().Warn("[Persist] hosts entry: " + host);
-    }
-}
-
-// ────────────────────────── службы ───────────────────────────
-
-void PersistenceScanner::ScanServices(IReportSink& sink, CancelToken& cancel) {
+void PersistenceScanner::ScanServices(IReportSink& sink, CancelToken& cancel, const ScanConfig& config) {
     SC_HANDLE scm = OpenSCManagerW(nullptr, nullptr, SC_MANAGER_ENUMERATE_SERVICE);
     if (!scm) return;
 
     DWORD needed = 0, count = 0, resume = 0;
-    EnumServicesStatusExW(scm, SC_ENUM_PROCESS_INFO, SERVICE_WIN32,
-                          SERVICE_STATE_ALL, nullptr, 0,
+    const DWORD types = SERVICE_WIN32 | SERVICE_DRIVER;
+    EnumServicesStatusExW(scm, SC_ENUM_PROCESS_INFO, types, SERVICE_STATE_ALL, nullptr, 0,
                           &needed, &count, &resume, nullptr);
-
-    std::vector<BYTE> buf(needed ? needed : 1);
-    if (!EnumServicesStatusExW(scm, SC_ENUM_PROCESS_INFO, SERVICE_WIN32,
-                               SERVICE_STATE_ALL, buf.data(), (DWORD)buf.size(),
-                               &needed, &count, &resume, nullptr)) {
+    std::vector<BYTE> buf(needed + 1024);
+    resume = 0;
+    if (!EnumServicesStatusExW(scm, SC_ENUM_PROCESS_INFO, types, SERVICE_STATE_ALL, buf.data(),
+                               static_cast<DWORD>(buf.size()), &needed, &count, &resume, nullptr)) {
         CloseServiceHandle(scm);
         return;
     }
+    auto* list = reinterpret_cast<ENUM_SERVICE_STATUS_PROCESSW*>(buf.data());
+    Logger::Instance().Info("[Services] " + std::to_string(count) + " services and drivers");
 
-    auto* services = reinterpret_cast<ENUM_SERVICE_STATUS_PROCESSW*>(buf.data());
+    FileAnalyzer::Options opt;
+    opt.reportPua = config.reportPua;
+    long long checked = 0;
 
-    for (DWORD i = 0; i < count; ++i) {
-        if (cancel.IsCancelled()) break;
-
-        SC_HANDLE svc = OpenServiceW(scm, services[i].lpServiceName,
-                                     SERVICE_QUERY_CONFIG);
+    for (DWORD i = 0; i < count && !cancel.IsCancelled(); ++i) {
+        sink.Progress("Services", static_cast<int>(90 * i / std::max<DWORD>(count, 1)));
+        SC_HANDLE svc = OpenServiceW(scm, list[i].lpServiceName, SERVICE_QUERY_CONFIG);
         if (!svc) continue;
-
         DWORD cfgNeeded = 0;
         QueryServiceConfigW(svc, nullptr, 0, &cfgNeeded);
-
-        std::vector<BYTE> cfgBuf(cfgNeeded ? cfgNeeded : 1);
+        std::vector<BYTE> cfgBuf(cfgNeeded + 16);
         auto* cfg = reinterpret_cast<QUERY_SERVICE_CONFIGW*>(cfgBuf.data());
-
-        if (QueryServiceConfigW(svc, cfg, (DWORD)cfgBuf.size(), &cfgNeeded) &&
-            cfg->lpBinaryPathName)
-        {
-            const std::wstring bin   = cfg->lpBinaryPathName;
-            const std::wstring image = ExtractImagePath(bin);
-
-            // Порядок важен: сначала дешёвая проверка пути, и только для
-            // подозрительных путей — дорогая проверка подписи.
-            if (IsSuspiciousServicePath(ToLower(bin)) && !IsTrustedBinary(image)) {
-                Threat t;
-                t.kind        = ThreatKind::File;
-                t.category    = ThreatCategory::AutoStart;
-                t.severity    = Severity::High;
-                t.name        = services[i].lpDisplayName
-                                ? services[i].lpDisplayName
-                                : services[i].lpServiceName;
-                t.source      = bin;
-                t.description = TR("A Windows service runs from a user or "
-                                   "temporary folder. Software installed "
-                                   "normally does not live there.").toStdWString();
-                t.suggestion  = TR("Check what installed this service before "
-                                   "removing it.").toStdWString();
-                t.filePath    = bin;
-
-                sink.Report(t);
-                Logger::Instance().Warn(
-                    "[Persist] service: " + WideToUtf8(bin));
-            }
-        }
+        const bool ok = QueryServiceConfigW(svc, cfg, static_cast<DWORD>(cfgBuf.size()), &cfgNeeded) &&
+                        cfg->lpBinaryPathName;
         CloseServiceHandle(svc);
+        if (!ok) continue;
+
+        const std::wstring command = cfg->lpBinaryPathName;
+        const std::wstring name = list[i].lpServiceName;
+        sink.Item(name);
+        sink.Checked(++checked);
+
+        std::vector<std::wstring> targets;
+        const CommandTarget::Parsed parsed = CommandTarget::Parse(command);
+        if (!parsed.executable.empty()) targets.push_back(parsed.executable);
+        const std::wstring dll = ServiceDll(name);
+        if (!dll.empty()) targets.push_back(dll);
+
+        Threat t;
+        t.kind = ThreatKind::Service;
+        t.name = list[i].lpDisplayName && *list[i].lpDisplayName ? list[i].lpDisplayName : name;
+        t.source = L"Service :: " + name;
+        t.serviceName = name;
+        t.evidence = command;
+        bool flagged = false;
+
+        for (const std::wstring& target : targets) {
+            if (config.IsExcludedPath(target)) continue;
+            const Verdict v = FileAnalyzer::Analyze(target, opt);
+            if (v.level == Verdict::Clean || config.IsAllowedHash(v.sha256)) continue;
+            Detections::FillFromVerdict(t, v);
+            t.summary = Detections::SummaryOf(v);
+            t.filePath = target;
+            flagged = true;
+        }
+        for (const std::string& r : CommandTarget::AbuseReasons(command)) {
+            t.reasons.push_back(r);
+            if (static_cast<int>(t.severity) < static_cast<int>(Severity::High)) t.severity = Severity::High;
+            if (t.summary.empty()) t.summary = L"Service abuses a system program";
+            flagged = true;
+        }
+        if (!flagged) continue;
+
+        const bool driver = (list[i].ServiceStatusProcess.dwServiceType & SERVICE_DRIVER) != 0;
+        t.reasons.insert(t.reasons.begin(), Reason({ driver ? "driver" : "service", Utf8(name) }));
+        sink.Report(t);
+        Logger::Instance().Warn("[Services] flagged: " + Utf8(name));
     }
     CloseServiceHandle(scm);
 }
 
-// ─────────────────────── подписки WMI ────────────────────────
-
-void PersistenceScanner::ScanWmiSubscriptions(IReportSink& sink) {
-    HRESULT hrInit = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
-    const bool needUninit = SUCCEEDED(hrInit);
-
+void PersistenceScanner::ScanWmi(IReportSink& sink, const ScanConfig& config) {
+    const HRESULT co = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
     IWbemLocator* loc = nullptr;
-    if (FAILED(CoCreateInstance(CLSID_WbemLocator, nullptr, CLSCTX_INPROC_SERVER,
-                                IID_IWbemLocator, (void**)&loc)) || !loc) {
-        if (needUninit) CoUninitialize();
-        return;
-    }
-
     IWbemServices* svc = nullptr;
-    // Потребители событий живут в пространстве subscription, а не cimv2.
-    if (FAILED(loc->ConnectServer(_bstr_t(L"ROOT\\subscription"), nullptr,
-                                  nullptr, nullptr, 0, nullptr, nullptr, &svc))
-        || !svc) {
-        loc->Release();
-        if (needUninit) CoUninitialize();
+    if (FAILED(CoCreateInstance(CLSID_WbemLocator, nullptr, CLSCTX_INPROC_SERVER, IID_IWbemLocator,
+                                reinterpret_cast<void**>(&loc))) || !loc ||
+        FAILED(loc->ConnectServer(_bstr_t(L"ROOT\\subscription"), nullptr, nullptr, nullptr, 0,
+                                  nullptr, nullptr, &svc)) || !svc)
+    {
+        if (loc) loc->Release();
+        if (SUCCEEDED(co)) CoUninitialize();
         return;
     }
+    CoSetProxyBlanket(svc, RPC_C_AUTHN_WINNT, RPC_C_AUTHZ_NONE, nullptr, RPC_C_AUTHN_LEVEL_CALL,
+                      RPC_C_IMP_LEVEL_IMPERSONATE, nullptr, EOAC_NONE);
 
-    CoSetProxyBlanket(svc, RPC_C_AUTHN_WINNT, RPC_C_AUTHZ_NONE, nullptr,
-                      RPC_C_AUTHN_LEVEL_CALL, RPC_C_IMP_LEVEL_IMPERSONATE,
-                      nullptr, EOAC_NONE);
+    FileAnalyzer::Options opt;
+    opt.reportPua = config.reportPua;
 
-    // CommandLineEventConsumer запускает произвольную команду по событию.
-    // Легитимного применения у него на домашней машине практически нет.
-    IEnumWbemClassObject* en = nullptr;
-    if (SUCCEEDED(svc->ExecQuery(
-            _bstr_t(L"WQL"),
-            _bstr_t(L"SELECT * FROM CommandLineEventConsumer"),
-            WBEM_FLAG_FORWARD_ONLY | WBEM_FLAG_RETURN_IMMEDIATELY,
-            nullptr, &en)) && en)
-    {
+    // Потребители, которые выполняют код: команду или сценарий. На домашней
+    // машине честного применения у них почти нет.
+    for (const wchar_t* cls : { L"CommandLineEventConsumer", L"ActiveScriptEventConsumer" }) {
+        IEnumWbemClassObject* en = nullptr;
+        const std::wstring query = std::wstring(L"SELECT * FROM ") + cls;
+        if (FAILED(svc->ExecQuery(_bstr_t(L"WQL"), _bstr_t(query.c_str()),
+                                  WBEM_FLAG_FORWARD_ONLY | WBEM_FLAG_RETURN_IMMEDIATELY, nullptr, &en)) || !en)
+            continue;
+
         IWbemClassObject* obj = nullptr;
         ULONG got = 0;
-
         while (en->Next(WBEM_INFINITE, 1, &obj, &got) == S_OK && got) {
-            VARIANT vName{}, vCmd{};
-            obj->Get(L"Name", 0, &vName, nullptr, nullptr);
-            obj->Get(L"CommandLineTemplate", 0, &vCmd, nullptr, nullptr);
-
-            const std::wstring name =
-                (vName.vt == VT_BSTR && vName.bstrVal) ? vName.bstrVal : L"(unnamed)";
-            const std::wstring cmd =
-                (vCmd.vt == VT_BSTR && vCmd.bstrVal) ? vCmd.bstrVal : L"";
-
-            Threat t;
-            t.kind        = ThreatKind::File;
-            t.category    = ThreatCategory::AutoStart;
-            t.severity    = Severity::Critical;
-            t.name        = name;
-            t.source      = L"WMI CommandLineEventConsumer :: " + cmd;
-            t.description = TR("A WMI subscription runs a command when a system "
-                               "event happens. It survives reboots and is not "
-                               "visible in startup lists or Task Scheduler.")
-                                .toStdWString();
-            t.evidence    = cmd;
-            t.suggestion  = TR("Unless you set this up yourself, treat it as "
-                               "malicious persistence.").toStdWString();
-
-            sink.Report(t);
-            Logger::Instance().Warn("[Persist] WMI consumer: " + WideToUtf8(name));
-
-            VariantClear(&vName);
-            VariantClear(&vCmd);
+            auto get = [&](const wchar_t* prop) {
+                VARIANT v{};
+                std::wstring s;
+                if (SUCCEEDED(obj->Get(prop, 0, &v, nullptr, nullptr)) && v.vt == VT_BSTR && v.bstrVal)
+                    s = v.bstrVal;
+                VariantClear(&v);
+                return s;
+            };
+            const std::wstring name = get(L"Name");
+            const std::wstring relpath = get(L"__RELPATH");
+            std::wstring payload = get(L"CommandLineTemplate");
+            if (payload.empty()) payload = get(L"ExecutablePath");
+            if (payload.empty()) payload = get(L"ScriptFileName");
+            if (payload.empty()) payload = get(L"ScriptText").substr(0, 400);
             obj->Release();
             obj = nullptr;
+
+            // Пример из старых версий Windows, безвреден.
+            if (name == L"BVTConsumer") continue;
+
+            Threat t;
+            t.kind = ThreatKind::WmiConsumer;
+            t.severity = Severity::High;
+            t.name = name.empty() ? std::wstring(cls) : name;
+            t.source = std::wstring(L"WMI ") + cls + L" :: " + t.name;
+            t.wmiConsumerPath = relpath;
+            t.evidence = payload;
+            t.summary = L"Permanent WMI event subscription runs code";
+            t.reasons.push_back(Reason({ "wmi", Utf8(cls) }));
+
+            const CommandTarget::Parsed parsed = CommandTarget::Parse(payload);
+            if (!parsed.executable.empty()) {
+                const Verdict v = FileAnalyzer::Analyze(parsed.executable, opt);
+                if (v.level != Verdict::Clean) {
+                    Detections::FillFromVerdict(t, v);
+                    t.filePath = parsed.executable;
+                }
+            }
+            for (const std::string& r : CommandTarget::AbuseReasons(payload)) {
+                t.reasons.push_back(r);
+                t.severity = Severity::Critical;
+            }
+            sink.Report(t);
+            Logger::Instance().Warn("[Services] WMI consumer: " + Utf8(t.name));
         }
         en->Release();
     }
-
     svc->Release();
     loc->Release();
-    if (needUninit) CoUninitialize();
+    if (SUCCEEDED(co)) CoUninitialize();
 }
 
-// ──────────────────────────────────────────────────────────────
+void PersistenceScanner::ScanHosts(IReportSink& sink) {
+    wchar_t sysDir[MAX_PATH] = {};
+    if (!GetSystemDirectoryW(sysDir, MAX_PATH)) return;
+    const fs::path hosts = fs::path(sysDir) / L"drivers" / L"etc" / L"hosts";
+    std::ifstream in(hosts);
+    if (!in) return;
 
-void PersistenceScanner::Scan(IReportSink& sink, CancelToken& cancel) {
-    Logger::Instance().Info("[Persist] checking system persistence...");
+    std::string line;
+    while (std::getline(in, line)) {
+        const size_t first = line.find_first_not_of(" \t");
+        if (first == std::string::npos || line[first] == '#') continue;
+        std::istringstream ss(line.substr(first));
+        std::string ip, host;
+        ss >> ip;
+        while (ss >> host) {
+            if (host.empty() || host[0] == '#') break;
+            std::transform(host.begin(), host.end(), host.begin(),
+                           [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+            const bool security = IsSecurityDomain(host);
+            // Подмена адреса популярного сайта на чужой сервер — фишинг.
+            // Блокировку (0.0.0.0, 127.0.0.1) популярных сайтов не трогаем:
+            // родительский контроль и блокировщики делают ровно это.
+            const bool hijack = !IsLoopback(ip) && IsPopularSite(host);
+            if (!security && !hijack) continue;
 
-    sink.Progress("System persistence", 0);
+            Threat t;
+            t.kind = ThreatKind::HostsEntry;
+            t.severity = hijack ? Severity::Critical : Severity::High;
+            t.name = Detections::Wide(host);
+            t.source = hosts.wstring();
+            t.hostsLine = Detections::Wide(line);
+            t.evidence = Detections::Wide(line);
+            t.summary = hijack ? L"hosts redirects a popular site to another server"
+                               : L"hosts blocks a security or update site";
+            t.reasons.push_back(Reason({ hijack ? "hosts.hijack" : "hosts.security", host, ip }));
+            sink.Report(t);
+            Logger::Instance().Warn("[Services] hosts entry: " + host + " -> " + ip);
+        }
+    }
+}
+
+void PersistenceScanner::Scan(IReportSink& sink, CancelToken& cancel, const ScanConfig& config) {
+    sink.Progress("Services", 0);
     ScanHosts(sink);
     if (cancel.IsCancelled()) return;
-
-    sink.Progress("System persistence", 33);
-    ScanServices(sink, cancel);
+    ScanServices(sink, cancel, config);
     if (cancel.IsCancelled()) return;
-
-    sink.Progress("System persistence", 66);
-    ScanWmiSubscriptions(sink);
-
-    Logger::Instance().Info("[Persist] done.");
+    sink.Progress("Services", 95);
+    ScanWmi(sink, config);
+    Logger::Instance().Info("[Services] done");
 }

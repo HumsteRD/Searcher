@@ -6,3 +6,6 @@ out/
 *.user
 *.aps
 .vs/
+# Базы сигнатур собираются скриптом tools/sigdb/fetch_signatures.py
+res/signatures/*.tsdb
+res/signatures/*.yar

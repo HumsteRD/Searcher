@@ -1,307 +1,175 @@
 #include "ProcessScanner.h"
-#include "SignatureDB.h"
+#include "CommandTarget.h"
+#include "Detections.h"
 #include "Logger.h"
-#include "SignatureVerifier.h"
-#include "PublisherWhitelist.h"
+
+#include "../engine/FileAnalyzer.h"
+#include "../engine/TrustVerifier.h"
 
 #include <Windows.h>
 #include <TlHelp32.h>
-#include <Psapi.h>
-#include <filesystem>
-#include <unordered_map>
+#include <winternl.h>
+
 #include <algorithm>
-#include <string>
+#include <cwctype>
+#include <unordered_map>
 #include <vector>
 
-#pragma comment(lib, "psapi.lib")
-
-namespace fs = std::filesystem;
+using Detections::Reason;
+using Detections::Utf8;
 
 namespace {
 
-std::string WideToUtf8(const std::wstring& w) {
-    if (w.empty()) return {};
-    int n = WideCharToMultiByte(CP_UTF8, 0, w.data(), (int)w.size(),
-                                nullptr, 0, nullptr, nullptr);
-    std::string out(n, '\0');
-    WideCharToMultiByte(CP_UTF8, 0, w.data(), (int)w.size(),
-                        out.data(), n, nullptr, nullptr);
-    return out;
-}
-
-std::wstring ToLower(std::wstring s) {
+std::wstring Lower(std::wstring s) {
     std::transform(s.begin(), s.end(), s.begin(),
-        [](wchar_t c) { return (wchar_t)towlower(c); });
+                   [](wchar_t c) { return static_cast<wchar_t>(std::towlower(c)); });
     return s;
 }
 
-std::wstring GetProcessPath(DWORD pid) {
-    HANDLE h = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
-    if (!h) return {};
-
-    wchar_t buf[MAX_PATH * 4] = {};
-    DWORD sz = sizeof(buf) / sizeof(wchar_t);
-
+struct Proc {
+    DWORD        pid = 0;
+    DWORD        parent = 0;
+    std::wstring name;
     std::wstring path;
-    if (QueryFullProcessImageNameW(h, 0, buf, &sz)) {
-        path.assign(buf, sz);
-    }
-    CloseHandle(h);
-    return path;
-}
-
-struct SystemProc {
-    const wchar_t* name;
-    const wchar_t* canonicalDir;
-    bool           protectedProc; // защищённый (PPL) — путь часто не читается
+    std::wstring commandLine;
 };
 
-const std::vector<SystemProc>& KnownSystemProcs() {
-    static const std::vector<SystemProc> kList = {
-        {L"svchost.exe",     L"system32", false},
-        {L"csrss.exe",       L"system32", true },
-        {L"lsass.exe",       L"system32", true },
-        {L"services.exe",    L"system32", true },
-        {L"winlogon.exe",    L"system32", true },
-        {L"smss.exe",        L"system32", true },
-        {L"wininit.exe",     L"system32", true },
-        {L"spoolsv.exe",     L"system32", false},
-        {L"conhost.exe",     L"system32", false},
-        {L"dwm.exe",         L"system32", true },
-        {L"taskhostw.exe",   L"system32", false},
-        {L"taskhost.exe",    L"system32", false},
-        {L"sihost.exe",      L"system32", false},
-        {L"unsecapp.exe",    L"system32", false},
-        {L"fontdrvhost.exe", L"system32", true },
-        {L"audiodg.exe",     L"system32", true },
-        {L"explorer.exe",    L"windows",  false},
-    };
-    return kList;
+std::wstring ImagePath(HANDLE h) {
+    wchar_t buf[MAX_PATH * 4] = {};
+    DWORD size = static_cast<DWORD>(std::size(buf));
+    return QueryFullProcessImageNameW(h, 0, buf, &size) ? std::wstring(buf, size) : std::wstring();
 }
 
-// Whitelist известных легитимных процессов Windows / популярного софта
-// ПО ИМЕНИ — на случай если подпись не читается (защищённые процессы,
-// процессы под другим пользователем и т.д.)
-bool IsWhitelistedProcName(const std::wstring& nameLow) {
-    static const std::vector<std::wstring> kNames = {
-        // Windows системные
-        L"searchprotocolhost.exe", L"searchfilterhost.exe",
-        L"searchindexer.exe", L"runtimebroker.exe",
-        L"backgroundtaskhost.exe", L"dllhost.exe",
-        L"wmiprvse.exe", L"ctfmon.exe", L"taskmgr.exe",
-        L"securityhealthservice.exe", L"securityhealthsystray.exe",
-        L"applicationframehost.exe", L"shellexperiencehost.exe",
-        L"startmenuexperiencehost.exe", L"textinputhost.exe",
-        L"crossdeviceresume.exe", L"crossdevice.exe",
-        L"phoneexperiencehost.exe", L"lockapp.exe",
-        L"useroobebroker.exe", L"systemsettings.exe",
-        L"smartscreen.exe", L"wudfhost.exe",
-
-        // Update-сервисы известных вендоров
-        L"microsoftedgeupdate.exe", L"googleupdate.exe",
-        L"bravecrashhandler.exe", L"bravecrashhandler64.exe",
-        L"gigabyteupdateservice.exe",
-    };
-    for (const auto& n : kNames) if (nameLow == n) return true;
-    return false;
+// Командная строка без чтения чужой памяти: класс 60 появился в Windows 8.1.
+std::wstring CommandLineOf(HANDLE h) {
+    using QueryFn = NTSTATUS(NTAPI*)(HANDLE, ULONG, PVOID, ULONG, PULONG);
+    static const QueryFn query = reinterpret_cast<QueryFn>(
+        GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "NtQueryInformationProcess"));
+    if (!query) return {};
+    ULONG needed = 0;
+    query(h, 60, nullptr, 0, &needed);
+    if (needed == 0 || needed > 64 * 1024) return {};
+    std::vector<BYTE> buf(needed);
+    if (query(h, 60, buf.data(), needed, &needed) < 0) return {};
+    const auto* us = reinterpret_cast<const UNICODE_STRING*>(buf.data());
+    if (!us->Buffer || us->Length == 0) return {};
+    return std::wstring(us->Buffer, us->Length / sizeof(wchar_t));
 }
 
-std::wstring CheckSystemMasquerade(const std::wstring& procName,
-                                   const std::wstring& procPath)
-{
-    // Если путь пустой — НЕ судим о маскараде. Пустой путь = защищённый
-    // процесс, который мы не смогли прочитать (это не подозрительно само по себе).
-    if (procPath.empty()) return L"";
-
-    auto nameLow = ToLower(procName);
-    auto pathLow = ToLower(procPath);
-
-    for (const auto& sys : KnownSystemProcs()) {
-        if (nameLow == ToLower(sys.name)) {
-            std::wstring canon = ToLower(sys.canonicalDir);
-            if (pathLow.find(L"\\" + canon + L"\\") == std::wstring::npos) {
-                return L"Process named '" + procName +
-                       L"' should run from %WINDIR%\\" + sys.canonicalDir +
-                       L", but runs from: " + procPath;
-            }
-            return L"";
-        }
-    }
-    return L"";
-}
-
-std::wstring CheckSuspiciousParent(const std::wstring& childName,
-                                   const std::wstring& parentName)
-{
-    auto childLow  = ToLower(childName);
-    auto parentLow = ToLower(parentName);
-
-    static const std::vector<std::wstring> dangerousChildren = {
-        L"powershell.exe", L"pwsh.exe", L"cmd.exe",
-        L"wscript.exe", L"cscript.exe", L"mshta.exe",
-        L"rundll32.exe", L"regsvr32.exe", L"certutil.exe",
-        L"bitsadmin.exe",
+// Имена системных процессов и каталог, откуда они обязаны запускаться.
+const wchar_t* ExpectedDir(const std::wstring& nameLower) {
+    static const std::pair<const wchar_t*, const wchar_t*> kSystem[] = {
+        { L"svchost.exe", L"\\windows\\system32\\" }, { L"csrss.exe", L"\\windows\\system32\\" },
+        { L"lsass.exe", L"\\windows\\system32\\" },   { L"services.exe", L"\\windows\\system32\\" },
+        { L"winlogon.exe", L"\\windows\\system32\\" },{ L"smss.exe", L"\\windows\\system32\\" },
+        { L"wininit.exe", L"\\windows\\system32\\" }, { L"spoolsv.exe", L"\\windows\\system32\\" },
+        { L"taskhostw.exe", L"\\windows\\system32\\" },{ L"sihost.exe", L"\\windows\\system32\\" },
+        { L"dwm.exe", L"\\windows\\system32\\" },     { L"conhost.exe", L"\\windows\\system32\\" },
+        { L"ctfmon.exe", L"\\windows\\system32\\" },  { L"dllhost.exe", L"\\windows\\sys" },
+        { L"rundll32.exe", L"\\windows\\sys" },       { L"explorer.exe", L"\\windows\\" },
+        { L"runtimebroker.exe", L"\\windows\\system32\\" },
     };
-    static const std::vector<std::wstring> dangerousParents = {
-        L"winword.exe", L"excel.exe", L"powerpnt.exe",
-        L"outlook.exe", L"onenote.exe", L"acrord32.exe",
-        L"acrobat.exe",
-    };
-
-    bool c = false, p = false;
-    for (const auto& x : dangerousChildren) if (childLow  == x) { c = true; break; }
-    for (const auto& x : dangerousParents)  if (parentLow == x) { p = true; break; }
-
-    if (c && p) {
-        return L"Suspicious parent: " + parentName + L" spawned " +
-               childName + L" (typical of macro malware or phishing).";
-    }
-    return L"";
-}
-
-bool IsTrustedSigned(const std::wstring& path) {
-    if (path.empty()) return false;
-    fs::path p(path);
-    auto sig = SignatureVerifier::Verify(p);
-    if (!sig.valid || sig.publisher.empty()) return false;
-    return PublisherWhitelist::Get().IsTrusted(sig.publisher);
+    for (const auto& [n, dir] : kSystem)
+        if (nameLower == n) return dir;
+    return nullptr;
 }
 
 } // namespace
 
-void ProcessScanner::Scan(IReportSink& sink, CancelToken& cancel) {
-    Logger::Instance().Info("[Proc] enumerating processes...");
-
+void ProcessScanner::Scan(IReportSink& sink, CancelToken& cancel, const ScanConfig& config) {
+    std::vector<Proc> procs;
     HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
     if (snap == INVALID_HANDLE_VALUE) {
-        Logger::Instance().Error("[Proc] snapshot failed");
+        Logger::Instance().Error("[Processes] snapshot failed");
         return;
     }
-
-    struct ProcInfo {
-        DWORD pid = 0, parentPid = 0;
-        std::wstring name, path;
-    };
-    std::unordered_map<DWORD, ProcInfo> procs;
-
-    PROCESSENTRY32W pe{};
-    pe.dwSize = sizeof(pe);
-
-    int counter = 0;
-    if (Process32FirstW(snap, &pe)) {
-        do {
-            if (cancel.IsCancelled()) break;
-            ProcInfo info;
-            info.pid       = pe.th32ProcessID;
-            info.parentPid = pe.th32ParentProcessID;
-            info.name      = pe.szExeFile;
-            info.path      = GetProcessPath(pe.th32ProcessID);
-            procs[info.pid] = std::move(info);
-            ++counter;
-        } while (Process32NextW(snap, &pe) && !cancel.IsCancelled());
+    PROCESSENTRY32W pe{ sizeof(pe) };
+    for (BOOL ok = Process32FirstW(snap, &pe); ok; ok = Process32NextW(snap, &pe)) {
+        if (pe.th32ProcessID <= 4) continue;
+        Proc p;
+        p.pid = pe.th32ProcessID;
+        p.parent = pe.th32ParentProcessID;
+        p.name = pe.szExeFile;
+        if (HANDLE h = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, p.pid)) {
+            p.path = ImagePath(h);
+            p.commandLine = CommandLineOf(h);
+            CloseHandle(h);
+        }
+        procs.push_back(std::move(p));
     }
     CloseHandle(snap);
+    Logger::Instance().Info("[Processes] " + std::to_string(procs.size()) + " processes");
 
-    Logger::Instance().Info("[Proc] " + std::to_string(counter) + " processes found");
+    FileAnalyzer::Options opt;
+    opt.reportPua = config.reportPua;
 
-    int flagged = 0, skippedBySig = 0, skippedByName = 0;
+    // Один образ — одна проверка: у браузера бывает три десятка процессов.
+    std::unordered_map<std::wstring, Verdict> verdicts;
+    long long checked = 0;
 
-    size_t procIdx = 0;
-    const size_t procTotal = procs.size();
-    for (const auto& [pid, p] : procs) {
+    for (size_t i = 0; i < procs.size() && !cancel.IsCancelled(); ++i) {
+        const Proc& p = procs[i];
+        sink.Progress("Processes", static_cast<int>(100 * i / std::max<size_t>(procs.size(), 1)));
         sink.Item(p.path.empty() ? p.name : p.path);
-        if (procTotal) {
-            sink.Progress("Processes",
-                          static_cast<int>(100 * procIdx / procTotal));
-        }
-        ++procIdx;
-        if (cancel.IsCancelled()) break;
-        if (pid == 0 || pid == 4) continue;
-
-        auto nameLow = ToLower(p.name);
-
-        // Быстрый whitelist по имени — известные легитимные процессы
-        if (IsWhitelistedProcName(nameLow)) {
-            ++skippedByName;
-            continue;
-        }
-
-        bool isFlagged = false;
-        Severity sev = Severity::Medium;
-        std::wstring why;
-
-        if (auto reason = CheckSystemMasquerade(p.name, p.path); !reason.empty()) {
-            isFlagged = true;
-            sev = Severity::Critical;
-            why = reason;
-        }
-
-        if (SignatureDB::Get().IsSuspiciousFileName(p.name)) {
-            isFlagged = true;
-            if (sev < Severity::High) sev = Severity::High;
-            if (!why.empty()) why += L" ";
-            why += L"Process name matches malware/miner heuristic.";
-        }
-
-        if (!p.path.empty() && SignatureDB::Get().IsSuspiciousPath(p.path)) {
-            isFlagged = true;
-            if (sev < Severity::Medium) sev = Severity::Medium;
-            if (!why.empty()) why += L" ";
-            why += L"Running from a dropper-typical location (Temp/AppData).";
-        }
-
-        // Бесфайловый: путь ЕСТЬ, но файла на диске нет.
-        // Если путь пустой — НЕ флагаем (просто не смогли прочитать).
-        if (!p.path.empty()) {
-            std::error_code ec;
-            if (!fs::exists(p.path, ec)) {
-                isFlagged = true;
-                sev = Severity::Critical;
-                if (!why.empty()) why += L" ";
-                why += L"Image file missing on disk (possible fileless malware).";
-            }
-        }
-
-        auto parentIt = procs.find(p.parentPid);
-        if (parentIt != procs.end()) {
-            if (auto reason = CheckSuspiciousParent(p.name, parentIt->second.name);
-                !reason.empty())
-            {
-                isFlagged = true;
-                if (sev < Severity::High) sev = Severity::High;
-                if (!why.empty()) why += L" ";
-                why += reason;
-            }
-        }
-
-        if (!isFlagged) continue;
-
-        if (!p.path.empty() && IsTrustedSigned(p.path)) {
-            ++skippedBySig;
-            continue;
-        }
-
-        ++flagged;
+        sink.Checked(++checked);
 
         Threat t;
-        t.kind        = ThreatKind::Process;
-        t.category    = ThreatCategory::HiddenProcess;
-        t.severity    = sev;
-        t.name        = p.name + L" (PID " + std::to_wstring(p.pid) + L")";
-        t.source      = p.path.empty() ? L"<protected / no path>" : p.path;
-        t.description = why;
-        t.pid         = p.pid;
-        t.filePath    = p.path;
-        t.suggestion  = L"Investigate. Consider terminating and quarantining.";
+        t.kind = ThreatKind::Process;
+        t.name = p.name;
+        t.source = p.path.empty() ? p.name : p.path;
+        t.filePath = p.path;
+        t.pid = p.pid;
+        t.evidence = p.commandLine;
+        bool flagged = false;
 
+        if (!p.path.empty() && !config.IsExcludedPath(p.path)) {
+            const std::wstring key = Lower(p.path);
+            auto it = verdicts.find(key);
+            if (it == verdicts.end()) it = verdicts.emplace(key, FileAnalyzer::Analyze(p.path, opt)).first;
+            const Verdict& v = it->second;
+            if (v.level != Verdict::Clean && !config.IsAllowedHash(v.sha256)) {
+                Detections::FillFromVerdict(t, v);
+                t.summary = Detections::SummaryOf(v);
+                flagged = true;
+            }
+        }
+
+        // Маскировка: системное имя, но не системный каталог. Подпись
+        // Microsoft снимает подозрение — у части компонентов есть копии
+        // в других местах (например, в WinSxS).
+        const std::wstring nameLower = Lower(p.name);
+        if (const wchar_t* dir = ExpectedDir(nameLower); dir && !p.path.empty()) {
+            const std::wstring pathLower = Lower(p.path);
+            if (pathLower.find(dir) == std::wstring::npos) {
+                const TrustVerifier::Result trust = TrustVerifier::Check(p.path);
+                const bool microsoft = trust.signedValid &&
+                    Lower(trust.publisher).find(L"microsoft") == 0;
+                if (!microsoft) {
+                    t.reasons.push_back(Reason({ "masquerade", Utf8(p.name) }));
+                    t.severity = Severity::Critical;
+                    if (t.summary.empty()) t.summary = L"Impersonates a Windows system process";
+                    flagged = true;
+                }
+            }
+        }
+
+        // Закодированная команда сама по себе у работающего процесса — не
+        // улика: так запускают PowerShell и честные установщики, и средства
+        // управления. Считается только вместе с другим приёмом.
+        std::vector<std::string> abuse = CommandTarget::AbuseReasons(p.commandLine);
+        if (abuse.size() == 1 && abuse.front() == "cmd.encoded") abuse.clear();
+        for (const std::string& r : abuse) {
+            t.reasons.push_back(r);
+            if (static_cast<int>(t.severity) < static_cast<int>(Severity::High)) t.severity = Severity::High;
+            if (t.summary.empty()) t.summary = L"Process abuses a system program";
+            flagged = true;
+        }
+
+        if (!flagged) continue;
+        t.reasons.insert(t.reasons.begin(), Reason({ "process", std::to_string(p.pid) }));
         sink.Report(t);
-        Logger::Instance().Warn("[Proc] flagged PID " + std::to_string(p.pid) +
-                                ": " + WideToUtf8(p.name));
+        Logger::Instance().Warn("[Processes] flagged: " + Utf8(t.source) + " (pid " +
+                                std::to_string(p.pid) + ")");
     }
-
-    Logger::Instance().Info(
-        "[Proc] done. Total: " + std::to_string(counter) +
-        ", flagged: " + std::to_string(flagged) +
-        ", skipped by signature: " + std::to_string(skippedBySig) +
-        ", skipped by name: " + std::to_string(skippedByName));
+    Logger::Instance().Info("[Processes] done");
 }

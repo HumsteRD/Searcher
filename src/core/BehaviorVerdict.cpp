@@ -277,36 +277,23 @@ Threat ThreatFromBehaviour(const std::wstring& hostPath,
 {
     Threat threat;
     threat.kind     = ThreatKind::File;
-    threat.category = ThreatCategory::SuspiciousFile;
     threat.severity = verdict.severity;
     threat.name     = fs::path(hostPath).filename().wstring();
     threat.source   = hostPath;
     threat.filePath = hostPath;
+    threat.summary  = verdict.summary;
 
-    // Описание строим одной строкой: в таблице угроз перенос строки
-    // всё равно не показывается, а подробности с путями пользователь
-    // уже видел на странице поведения.
-    std::wstring description = verdict.summary;
-    for (size_t i = 0; i < verdict.findings.size(); ++i) {
-        description += (i == 0) ? L" " : L"; ";
-        description += verdict.findings[i].title;
+    // Причины — кодами: текст строит интерфейс. Заголовки улик уже
+    // человеческие, но английские — интерфейс переводит их по словарю.
+    threat.reasons.push_back("behavior");
+    for (const auto& f : verdict.findings) {
+        std::string title;
+        for (wchar_t c : f.title) title += c < 128 ? static_cast<char>(c) : '?';
+        threat.reasons.push_back("behavior.finding\t" + title);
     }
-    if (!verdict.findings.empty()) description += L".";
+    if (report.timedOut) threat.reasons.push_back("behavior.timeout");
 
-    if (report.timedOut) {
-        description += L" Observation stopped at the time limit, so this may "
-                       L"not be everything.";
-    }
-    threat.description = description;
-
-    threat.suggestion = L"Behaviour observed in an isolated sandbox. "
-                        L"Quarantine the file if you did not expect this.";
-
-    // Хэш кладём в evidence — из него страница угроз делает запрос
-    // в VirusTotal. Без него кнопка проверки на этой строке мертва,
-    // хотя проверять есть что: файл лежит на диске у пользователя.
-    if (auto sha = Hasher::Sha256File(hostPath); sha.has_value()) {
-        threat.evidence.assign(sha->begin(), sha->end());
-    }
+    // Хэш нужен для проверки в VirusTotal: файл лежит у пользователя.
+    if (auto sha = Hasher::Sha256File(hostPath); sha.has_value()) threat.sha256 = *sha;
     return threat;
 }

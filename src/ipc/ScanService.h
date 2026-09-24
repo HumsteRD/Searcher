@@ -35,7 +35,7 @@ public:
 
 private:
     void PollOnce();
-    void ApplySettings(const QJsonObject& args);
+    static ScanConfig ConfigFromArgs(const QJsonObject& args);
 
     HelperServer&     server_;
     Scanner           scanner_;
@@ -52,6 +52,8 @@ private:
     long long lastObjects_ = -1;
     int       lastPercent_ = -1;
     std::string lastStage_;
+    std::wstring lastItem_;
+    std::vector<int> lastStatuses_;
 };
 
 } // namespace Ipc

@@ -18,13 +18,13 @@
 #include "core/ServiceConfig.h"
 #include "core/Scanner.h"
 #include "core/Logger.h"
-#include "core/RegistryScanner.h"
 #include "core/FileSystemScanner.h"
 #include "core/ProcessScanner.h"
-#include "core/NetworkScanner.h"
+#include "core/AutorunScanner.h"
 #include "core/TaskSchedulerScanner.h"
-#include "core/ScriptScanner.h"
 #include "core/PersistenceScanner.h"
+#include "core/NetworkScanner.h"
+#include "core/ThreatJson.h"
 
 #include <QCoreApplication>
 #include <QFile>
@@ -161,7 +161,7 @@ int Status() {
 
 // ─── Работа ──────────────────────────────────────────────────────────────
 
-void AppendResult(int threats, int critical, long long objects, int durationMs) {
+void AppendResult(const ScanStats& stats, const std::vector<Threat>& threats, bool full) {
     const QString path = QString::fromStdWString(ServiceConfig::ResultsPath());
     if (path.isEmpty()) return;
 
@@ -174,10 +174,15 @@ void AppendResult(int threats, int critical, long long objects, int durationMs) 
 
     QJsonObject record;
     record["when"]       = QDateTime::currentDateTime().toString(Qt::ISODate);
-    record["threats"]    = threats;
-    record["critical"]   = critical;
-    record["objects"]    = static_cast<double>(objects);
-    record["durationMs"] = durationMs;
+    record["mode"]       = full ? "Full" : "Quick";
+    record["threats"]    = stats.totalThreats;
+    record["critical"]   = stats.criticalThreats;
+    record["objects"]    = static_cast<double>(stats.objectsScanned);
+    record["durationMs"] = stats.elapsedMs;
+    record["cancelled"]  = stats.cancelled;
+    QJsonArray found;
+    for (const Threat& t : threats) found.append(ThreatJson::ToJson(t));
+    record["findings"]   = found;
     records.prepend(record);
 
     // Файл читает приложение при запуске; бесконечно расти ему незачем.
@@ -187,30 +192,30 @@ void AppendResult(int threats, int critical, long long objects, int durationMs) 
     file.write(QJsonDocument(records).toJson(QJsonDocument::Indented));
 }
 
-void RunScan() {
+void RunScan(bool full) {
     Scanner scanner;
-    scanner.RegisterModule(std::make_shared<RegistryScanner>());
-    scanner.RegisterModule(std::make_shared<FileSystemScanner>());
     scanner.RegisterModule(std::make_shared<ProcessScanner>());
-    scanner.RegisterModule(std::make_shared<NetworkScanner>());
+    scanner.RegisterModule(std::make_shared<AutorunScanner>());
     scanner.RegisterModule(std::make_shared<TaskSchedulerScanner>());
-    scanner.RegisterModule(std::make_shared<ScriptScanner>());
     scanner.RegisterModule(std::make_shared<PersistenceScanner>());
+    scanner.RegisterModule(std::make_shared<NetworkScanner>());
+    scanner.RegisterModule(std::make_shared<FileSystemScanner>());
 
-    scanner.Start();
+    ScanConfig config;
+    config.mode = full ? ScanConfig::Mode::Full : ScanConfig::Mode::Quick;
+    scanner.Start(config);
 
     // Ждём окончания, но уступаем команде остановки: служба обязана
     // ответить диспетчеру вовремя, иначе Windows сочтёт её зависшей.
-    while (scanner.State() == ScanState::Running) {
+    while (scanner.State() != ScanState::Done) {
         if (WaitForSingleObject(g_stopEvent, 500) == WAIT_OBJECT_0) {
             scanner.Cancel();
+            while (scanner.State() != ScanState::Done) Sleep(100);
             break;
         }
     }
 
-    const ScanStats stats = scanner.Stats();
-    AppendResult(stats.totalThreats, stats.criticalThreats,
-                 stats.objectsScanned, stats.elapsedMs);
+    AppendResult(scanner.Stats(), scanner.Snapshot(), full);
 }
 
 void WINAPI ServiceHandler(DWORD control) {
@@ -244,7 +249,7 @@ void WINAPI ServiceMain(DWORD, LPWSTR*) {
             // загрузка и так занята, а расписание не про минуты.
             if (lastScan == 0) lastScan = now;
             else if (now - lastScan >= interval) {
-                RunScan();
+                RunScan(settings.deepScan);
                 lastScan = GetTickCount64();
             }
         }

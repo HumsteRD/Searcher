@@ -5,13 +5,13 @@
 #include "ActionExecutor.h"   // ActionResult
 
 #include <atomic>
-#include <thread>
-#include <mutex>
-#include <vector>
-#include <memory>
-#include <string>
-#include <unordered_set>
 #include <chrono>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <thread>
+#include <unordered_set>
+#include <vector>
 
 enum class ScanState {
     Idle,
@@ -23,14 +23,14 @@ enum class ScanState {
 struct ScanStats {
     int  totalThreats = 0;
     int  criticalThreats = 0;
-    int  progressPercent = 0;
+    int  progressPercent = 0;       // -1 — пока неизвестен (идёт подсчёт)
     std::string  currentStage;
 
-    // Что происходит прямо сейчас и сколько уже проверено.
     long long    objectsScanned = 0;
     std::wstring currentItem;
     int          elapsedMs = 0;
-    int          etaMs = -1;   // -1 = оценить пока нельзя
+    int          etaMs = -1;        // -1 — оценить пока нельзя
+    bool         cancelled = false;
 };
 
 class Scanner : public IReportSink {
@@ -40,26 +40,27 @@ public:
 
     void RegisterModule(std::shared_ptr<IScanModule> module);
 
-    void Start();
+    // Подготовить базы (компиляция правил YARA, чтение базы хэшей)
+    // и запустить проверку в рабочем потоке.
+    void Start(const ScanConfig& config);
     void Cancel();
 
     ScanState           State() const { return state_.load(); }
     ScanStats           Stats();
     std::vector<Threat> Snapshot();
 
-    // Достать копию угрозы по индексу в Snapshot(). false — индекс невалиден.
     bool GetThreat(size_t index, Threat& out);
 
-    // Применить действие к угрозе: 0 = Quarantine, 1 = Delete, 2 = Ignore.
-    // Файловые операции выполняются вне мьютекса, чтобы не блокировать скан.
+    // Действие над угрозой: 0 — карантин, 1 — удаление, 2 — пропустить.
     ActionResult ApplyAction(size_t index, int action);
 
     void Report(const Threat& threat) override;
     void Item(const std::wstring& path) override;
     void Progress(const std::string& stage, int percent) override;
+    void Checked(long long count) override;
 
 private:
-    void Worker();
+    void Worker(ScanConfig config);
 
     std::atomic<ScanState> state_{ ScanState::Idle };
     CancelToken            cancel_;
@@ -68,14 +69,14 @@ private:
     std::mutex                                mutex_;
     std::vector<std::shared_ptr<IScanModule>> modules_;
     std::vector<Threat>                       threats_;
-    // Ключи уже сообщённых объектов: файловый модуль и анализатор
-    // скриптов видят одни и те же .ps1/.bat, и без этого один файл
-    // попадал в список дважды.
     std::unordered_set<std::wstring>          reported_;
     ScanStats                                 stats_;
 
-    // Пересчёт прогресса модуля в общий: модуль знает только свои 0..100.
-    int  moduleIndex_ = 0;
-    int  moduleCount_ = 1;
+    // Общий прогресс — взвешенная сумма прогресса модулей.
+    int       weightDone_ = 0;       // сумма весов законченных модулей
+    int       weightTotal_ = 1;
+    int       currentWeight_ = 1;
+    long long checkedBefore_ = 0;    // проверено законченными модулями
+    long long checkedCurrent_ = 0;
     std::chrono::steady_clock::time_point startedAt_;
 };

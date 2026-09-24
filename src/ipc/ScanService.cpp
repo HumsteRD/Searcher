@@ -1,18 +1,18 @@
 #include "ScanService.h"
 #include "HelperProtocol.h"
 
-#include "../core/AppSettings.h"
 #include "../core/Logger.h"
 #include "../core/Quarantine.h"
-#include "../core/RegistryScanner.h"
+#include "../core/ThreatJson.h"
 #include "../core/FileSystemScanner.h"
 #include "../core/ProcessScanner.h"
-#include "../core/NetworkScanner.h"
+#include "../core/AutorunScanner.h"
 #include "../core/TaskSchedulerScanner.h"
-#include "../core/ScriptScanner.h"
 #include "../core/PersistenceScanner.h"
+#include "../core/NetworkScanner.h"
 
 #include <QJsonArray>
+#include <algorithm>
 #include <memory>
 
 namespace Ipc {
@@ -20,29 +20,14 @@ namespace {
 
 constexpr int kPollIntervalMs = 80;
 
-QString SeverityCode(Severity severity) {
-    switch (severity) {
-    case Severity::Critical: return "CRIT";
-    case Severity::High:     return "HIGH";
-    case Severity::Medium:   return "MED";
-    case Severity::Low:      return "LOW";
-    default:                 return "INFO";
-    }
-}
-
-QString StatusName(ThreatStatus status) {
-    switch (status) {
-    case ThreatStatus::Quarantined: return "Quarantined";
-    case ThreatStatus::Deleted:     return "Deleted";
-    case ThreatStatus::Ignored:     return "Ignored";
-    case ThreatStatus::Restored:    return "Restored";
-    case ThreatStatus::Failed:      return "Failed";
-    default:                        return "Pending";
-    }
-}
-
 QString FromWide(const std::wstring& text) {
     return QString::fromStdWString(text);
+}
+
+std::vector<std::wstring> WideList(const QJsonValue& v) {
+    std::vector<std::wstring> out;
+    for (const auto& x : v.toArray()) out.push_back(x.toString().toStdWString());
+    return out;
 }
 
 } // namespace
@@ -56,28 +41,32 @@ ScanService::~ScanService() {
 }
 
 void ScanService::RegisterModules() {
-    scanner_.RegisterModule(std::make_shared<RegistryScanner>());
-    scanner_.RegisterModule(std::make_shared<FileSystemScanner>());
+    // Порядок выполнения: быстрые модули первыми — работающая угроза
+    // найдётся за секунды, а не после получаса обхода диска.
     scanner_.RegisterModule(std::make_shared<ProcessScanner>());
-    scanner_.RegisterModule(std::make_shared<NetworkScanner>());
+    scanner_.RegisterModule(std::make_shared<AutorunScanner>());
     scanner_.RegisterModule(std::make_shared<TaskSchedulerScanner>());
-    scanner_.RegisterModule(std::make_shared<ScriptScanner>());
     scanner_.RegisterModule(std::make_shared<PersistenceScanner>());
+    scanner_.RegisterModule(std::make_shared<NetworkScanner>());
+    scanner_.RegisterModule(std::make_shared<FileSystemScanner>());
 }
 
-void ScanService::ApplySettings(const QJsonObject& args) {
-    // Настройки приезжают с командой, а не читаются из реестра: помощник
-    // поднялся один раз, а пользователь мог поменять их в окне уже после.
-    AppSettings& settings = AppSettings::Get();
-
-    settings.SetMode(static_cast<AppSettings::ScanMode>(
-        args["mode"].toInt(static_cast<int>(AppSettings::ScanMode::Full))));
-    settings.SetCustomPath(args["customPath"].toString().toStdWString());
-    settings.SetDeepScan(args["deepScan"].toBool());
-
+ScanConfig ScanService::ConfigFromArgs(const QJsonObject& args) {
+    // Настройки приезжают с командой: помощник поднялся один раз, а
+    // пользователь мог поменять их в окне уже после.
+    ScanConfig c;
+    c.mode = static_cast<ScanConfig::Mode>(std::clamp(args["mode"].toInt(0), 0, 2));
+    c.paths = WideList(args["paths"]);
     const QJsonArray modules = args["modules"].toArray();
-    for (int i = 0; i < AppSettings::ModuleCount && i < modules.size(); ++i)
-        settings.SetModuleEnabled(i, modules.at(i).toBool(true));
+    for (int i = 0; i < ScanConfig::ModuleCount && i < modules.size(); ++i)
+        c.modules[i] = modules.at(i).toBool(true);
+    c.extendedRules  = args["extendedRules"].toBool(false);
+    c.reportPua      = args["reportPua"].toBool(false);
+    c.unpackArchives = args["unpackArchives"].toBool(true);
+    c.excludedPaths  = WideList(args["excludedPaths"]);
+    for (const auto& h : args["allowedHashes"].toArray())
+        c.allowedHashes.push_back(h.toString().toLower().toStdString());
+    return c;
 }
 
 bool ScanService::Handle(const QString& command, const QJsonObject& args,
@@ -88,7 +77,7 @@ bool ScanService::Handle(const QString& command, const QJsonObject& args,
             *error = "a scan is already running";
             return true;
         }
-        ApplySettings(args);
+        const ScanConfig config = ConfigFromArgs(args);
 
         // Счётчики сбрасываем здесь: Scanner чистит свой список угроз
         // при старте, и без сброса первые угрозы новой проверки уедут
@@ -96,10 +85,11 @@ bool ScanService::Handle(const QString& command, const QJsonObject& args,
         lastThreatCount_ = 0;
         lastTotal_ = lastCritical_ = -1;
         lastObjects_ = -1;
-        lastPercent_ = -1;
+        lastPercent_ = -2;
         lastStage_.clear();
+        lastStatuses_.clear();
 
-        scanner_.Start();
+        scanner_.Start(config);
         return true;
     }
 
@@ -121,7 +111,7 @@ bool ScanService::Handle(const QString& command, const QJsonObject& args,
 
         Threat threat;
         (*result)["status"] = scanner_.GetThreat(static_cast<size_t>(index), threat)
-            ? StatusName(threat.status) : QString("Failed");
+            ? ThreatJson::StatusCode(threat.status) : QString("failed");
         (*result)["success"] = applied.success;
         (*result)["message"] = FromWide(applied.message);
         return true;
@@ -147,17 +137,7 @@ bool ScanService::Handle(const QString& command, const QJsonObject& args,
         // Находка приходит снаружи — её нашла страница поведения, а не
         // проверка. Список угроз один на всех, и действия к ней должны
         // применяться так же, как к остальным.
-        Threat threat;
-        threat.severity = static_cast<Severity>(args["severity"].toInt());
-        threat.kind     = static_cast<ThreatKind>(args["kind"].toInt());
-        threat.category = static_cast<ThreatCategory>(args["category"].toInt());
-        threat.name        = args["name"].toString().toStdWString();
-        threat.source      = args["source"].toString().toStdWString();
-        threat.description = args["description"].toString().toStdWString();
-        threat.evidence    = args["evidence"].toString().toStdWString();
-        threat.suggestion  = args["suggestion"].toString().toStdWString();
-        threat.filePath    = args["filePath"].toString().toStdWString();
-
+        const Threat threat = ThreatJson::FromJson(args);
         scanner_.Report(threat);
         return true;
     }
@@ -199,15 +179,8 @@ void ScanService::PollOnce() {
     const std::vector<Threat> threats = scanner_.Snapshot();
     if (threats.size() > lastThreatCount_) {
         for (size_t i = lastThreatCount_; i < threats.size(); ++i) {
-            const Threat& threat = threats[i];
-            QJsonObject payload;
-            payload["index"]    = static_cast<int>(i);
-            payload["kind"]     = static_cast<int>(threat.kind);
-            payload["severity"] = SeverityCode(threat.severity);
-            payload["name"]     = FromWide(threat.name);
-            payload["source"]   = FromWide(threat.source);
-            payload["why"]      = FromWide(threat.description);
-            payload["evidence"] = FromWide(threat.evidence);
+            QJsonObject payload = ThreatJson::ToJson(threats[i]);
+            payload["index"] = static_cast<int>(i);
             server_.SendEvent(kEventThreat, payload);
         }
         lastThreatCount_ = threats.size();
@@ -219,7 +192,8 @@ void ScanService::PollOnce() {
     //    угроз, чем в самом списке находок.
     const ScanStats stats = scanner_.Stats();
 
-    if (stats.objectsScanned != lastObjects_) {
+    if (stats.objectsScanned != lastObjects_ || stats.currentItem != lastItem_) {
+        lastItem_ = stats.currentItem;
         lastObjects_ = stats.objectsScanned;
         QJsonObject payload;
         payload["item"]      = FromWide(stats.currentItem);
@@ -235,6 +209,7 @@ void ScanService::PollOnce() {
         QJsonObject payload;
         payload["percent"] = stats.progressPercent;
         payload["stage"]   = QString::fromStdString(stats.currentStage);
+        payload["cancelled"] = stats.cancelled;
         server_.SendEvent(kEventProgress, payload);
     }
 

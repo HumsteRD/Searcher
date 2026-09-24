@@ -377,8 +377,11 @@ void TestVerdict() {
         CheckEqual(threat.filePath, hostPath, "threat points at the host file");
         CheckEqual(threat.name, L"счёт.exe", "threat is named after the host file");
         Check(threat.severity == verdict.severity, "severity carried over");
-        Check(threat.description.find(L"autorun") != std::wstring::npos,
-              "description names what it did");
+        bool namesAutorun = false;
+        for (const std::string& r : threat.reasons)
+            if (r.find("behavior.finding") == 0 && r.find("autorun") != std::string::npos)
+                namesAutorun = true;
+        Check(namesAutorun, "reasons name what it did");
     }
 
     // Слабый вердикт угрозой не становится: ложное срабатывание дороже.

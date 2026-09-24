@@ -42,6 +42,10 @@ public:
     // Список всех элементов в карантине.
     std::vector<QuarantineItem> List() const;
 
+    // Последний QuarantineFile не смог удалить занятый оригинал сразу
+    // и поставил удаление на перезагрузку.
+    bool LastPendingReboot() const { return lastPendingReboot_; }
+
 private:
     Quarantine();
     void EnsureDir();
@@ -51,4 +55,5 @@ private:
     static void XorTransform(std::vector<char>& data);
 
     std::filesystem::path dir_;
+    bool lastPendingReboot_ = false;
 };

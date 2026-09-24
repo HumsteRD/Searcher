@@ -1,2 +1,0 @@
-// Иконка приложения: Windows берёт первую по порядку как значок exe.
-IDI_ICON1 ICON "icons/app.ico"

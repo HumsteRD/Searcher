@@ -152,6 +152,7 @@ std::optional<std::string> Quarantine::QuarantineFile(
     const std::wstring& threatName,
     const std::wstring& severity)
 {
+    lastPendingReboot_ = false;
     std::error_code ec;
     if (!fs::exists(filePath, ec)) {
         Logger::Instance().Error("[Quarantine] file not found: " +
@@ -203,10 +204,22 @@ std::optional<std::string> Quarantine::QuarantineFile(
     meta.close();
 
     // Удаляем оригинал
+    // Копия в хранилище без удаления оригинала — не карантин: файл
+    // остался на месте и может работать. Занятый файл (запущенная
+    // программа) удаляется при следующей загрузке, иначе — отказ.
     fs::remove(filePath, ec);
     if (ec) {
-        Logger::Instance().Warn("[Quarantine] quarantined but couldn't remove original: " +
-                                WideToUtf8(filePath));
+        if (MoveFileExW(filePath.c_str(), nullptr, MOVEFILE_DELAY_UNTIL_REBOOT)) {
+            lastPendingReboot_ = true;
+            Logger::Instance().Warn("[Quarantine] original is in use, removal scheduled for reboot: " +
+                                    WideToUtf8(filePath));
+        } else {
+            fs::remove(BlobPath(id), ec);
+            fs::remove(MetaPath(id), ec);
+            Logger::Instance().Error("[Quarantine] cannot remove the original, quarantine undone: " +
+                                     WideToUtf8(filePath));
+            return std::nullopt;
+        }
     }
 
     Logger::Instance().Info("[Quarantine] quarantined: " +
