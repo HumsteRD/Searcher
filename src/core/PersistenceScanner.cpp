@@ -4,6 +4,10 @@
 #include "Logger.h"
 
 #include "../engine/FileAnalyzer.h"
+#include "../engine/Parallel.h"
+
+#include <atomic>
+#include <set>
 
 #include <Windows.h>
 #include <comdef.h>
@@ -104,8 +108,38 @@ void PersistenceScanner::ScanServices(IReportSink& sink, CancelToken& cancel, co
     opt.reportPua = config.reportPua;
     long long checked = 0;
 
+    // Сначала — все запускаемые файлы параллельно: их сотни, и проверка
+    // каждого — это чтение с диска. Второй проход ниже берёт вердикты из
+    // кэша анализатора.
+    {
+        std::set<std::wstring> unique;
+        for (DWORD i = 0; i < count && !cancel.IsCancelled(); ++i) {
+            SC_HANDLE svc = OpenServiceW(scm, list[i].lpServiceName, SERVICE_QUERY_CONFIG);
+            if (!svc) continue;
+            DWORD need = 0;
+            QueryServiceConfigW(svc, nullptr, 0, &need);
+            std::vector<BYTE> b(need + 16);
+            auto* c = reinterpret_cast<QUERY_SERVICE_CONFIGW*>(b.data());
+            if (QueryServiceConfigW(svc, c, static_cast<DWORD>(b.size()), &need) && c->lpBinaryPathName) {
+                const CommandTarget::Parsed parsed = CommandTarget::Parse(c->lpBinaryPathName);
+                if (!parsed.executable.empty()) unique.insert(parsed.executable);
+                const std::wstring dll = ServiceDll(list[i].lpServiceName);
+                if (!dll.empty()) unique.insert(dll);
+            }
+            CloseServiceHandle(svc);
+        }
+        const std::vector<std::wstring> files(unique.begin(), unique.end());
+        std::atomic<size_t> done{ 0 };
+        ParallelFor(files.size(), [&](size_t i) {
+            if (cancel.IsCancelled()) return;
+            FileAnalyzer::Analyze(files[i], opt);
+            sink.Item(files[i]);
+            sink.Progress("Services", static_cast<int>(85 * ++done / std::max<size_t>(files.size(), 1)));
+        });
+    }
+
     for (DWORD i = 0; i < count && !cancel.IsCancelled(); ++i) {
-        sink.Progress("Services", static_cast<int>(90 * i / std::max<DWORD>(count, 1)));
+        sink.Progress("Services", 85 + static_cast<int>(10 * i / std::max<DWORD>(count, 1)));
         SC_HANDLE svc = OpenServiceW(scm, list[i].lpServiceName, SERVICE_QUERY_CONFIG);
         if (!svc) continue;
         DWORD cfgNeeded = 0;

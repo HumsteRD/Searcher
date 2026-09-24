@@ -16,7 +16,7 @@ namespace Ipc {
 // Версия протокола. Помощник и интерфейс лежат рядом и обновляются
 // вместе, но проверка рукопожатия стоит дёшево, а рассинхрон после
 // частичного обновления ловится сразу и понятно.
-inline constexpr int kProtocolVersion = 1;
+inline constexpr int kProtocolVersion = 2;
 
 // Поля сообщения.
 inline constexpr const char* kFieldId      = "id";
@@ -40,11 +40,17 @@ inline constexpr const char* kCmdAddThreat   = "add_threat";
 // в %ProgramData% и открыто на чтение. А вот менять его — только сюда.
 inline constexpr const char* kCmdQuarantineRestore = "quarantine_restore";
 inline constexpr const char* kCmdQuarantineDelete  = "quarantine_delete";
+// Файл, найденный вне проверки (перетащенный, из монитора загрузок),
+// кладётся в карантин по пути.
+inline constexpr const char* kCmdQuarantineFile    = "quarantine_file";
 
 // Windows Sandbox запускается только с правами администратора, поэтому
 // сеанс целиком держит помощник. Наружу уходят стадии и путь к отчёту.
 inline constexpr const char* kCmdSandboxRun    = "sandbox_run";
 inline constexpr const char* kCmdSandboxCancel = "sandbox_cancel";
+// Включить компонент Windows Sandbox (DISM). Работает не на всех
+// редакциях: на Домашней компонента нет, и DISM вернёт ошибку.
+inline constexpr const char* kCmdSandboxEnable = "sandbox_enable";
 
 // Служба фоновых проверок. Ставится и удаляется только отсюда:
 // диспетчер служб не разговаривает с непривилегированным процессом.

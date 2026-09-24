@@ -1,49 +1,31 @@
 #pragma once
 
+#include <QColor>
 #include <QIcon>
 #include <QPixmap>
-#include <QString>
-#include <QColor>
 
-// Иконки из макета: viewBox 24×24, только обводка 1.75, круглые концы,
-// currentColor. Хранятся как path-данные и рендерятся в нужном цвете
-// на лету — иначе пришлось бы держать по SVG-файлу на каждое состояние.
+// Иконки интерфейса: сетка 24×24, обводка 1.75, скруглённые концы.
+// Хранятся путями SVG и рендерятся в нужном цвете с учётом масштаба
+// экрана — остаются чёткими при 125–200%.
 namespace Icons {
 
 enum class Id {
-    Shield,        // сайдбар: Home, логотип
-    ShieldCheck,   // герой: система защищена
-    Magnifier,     // Scan
-    Warning,       // Threats, герой: угрозы найдены
-    Box,           // Quarantine
-    List,          // Logs
-    Gear,          // Settings
-    Check,
-    Cross,
-    Refresh,
-    Folder,
-    Flask,         // Behavior: наблюдение за образцом в изоляции
-    Trash,
-    RestoreArrow,
-    // Кнопки окна — из макета тайтлбара, viewBox 16×16
-    WinMinimize,
-    WinMaximize,
-    WinClose
+    Home, Shield, ShieldCheck, ShieldAlert, Scan, Alert, Quarantine, Activity, History,
+    Log, Settings, Help, File, Folder, Play, Stop, Trash, Restore, External, Copy,
+    Check, Close, Info, Download, Refresh, Globe, Cpu, Power, Calendar, Layers, Network,
+    ChevronRight, ChevronDown, Plus, Minus, Sun, Moon, Monitor, Lock, Bolt, Drive, Target,
+    ArrowUp, Menu, Cube, Database, Search, WinMinimize, WinMaximize, WinRestore, WinClose,
+    Logo,
 };
 
-// Пиксмап нужного размера и цвета. Рендерится с учётом devicePixelRatio,
-// поэтому остаётся чётким при дробном масштабировании Windows.
 QPixmap pixmap(Id id, int size, const QColor& color);
+QIcon   icon(Id id, int size, const QColor& color);
 
-QIcon icon(Id id, int size, const QColor& color);
+// Иконка с цветом для обычного и выключенного состояния.
+QIcon   icon(Id id, int size, const QColor& normal, const QColor& disabled);
 
-// Иконка с разными цветами для обычного и выключенного состояния.
-QIcon icon(Id id, int size, const QColor& normal, const QColor& disabled);
-
-// Маскот и статусные глифы из identity-набора лежат в ресурсах как SVG
-// с заливкой (в отличие от интерфейсных иконок, они не обводка).
-// name — имя ресурса без пути и расширения, например "mascot" или
-// "glyph-clean". Заливка подменяется на переданный цвет.
-QPixmap fromResource(const QString& name, int size, const QColor& color);
+// Логотип приложения (с фоном), для окна, трея и установщика.
+QPixmap logo(int size);
+QIcon   appIcon();
 
 } // namespace Icons

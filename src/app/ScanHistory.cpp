@@ -1,175 +1,177 @@
 #include "ScanHistory.h"
 #include "Lang.h"
-#include "ServiceConfig.h"
+#include "Texts.h"
 
-#include <algorithm>
+#include "../core/ServiceConfig.h"
+#include "../core/ThreatJson.h"
+#include "../ui/Widgets.h"
 
-#include <QStandardPaths>
 #include <QDir>
 #include <QFile>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QJsonArray>
 #include <QLocale>
+#include <QSaveFile>
+#include <QSettings>
+#include <QStandardPaths>
 
 ScanHistory& ScanHistory::instance() {
-    static ScanHistory h;
-    return h;
+    static ScanHistory* h = new ScanHistory();
+    return *h;
 }
 
-ScanHistory::ScanHistory() {
-    load();
-}
+ScanHistory::ScanHistory() { load(); }
 
 QString ScanHistory::filePath() const {
-    const QString dir =
-        QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    const QString dir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
     QDir().mkpath(dir);
-    return dir + "/scan-history.json";
+    return dir + "/scan-history-v2.json";
 }
 
 void ScanHistory::load() {
     QFile f(filePath());
     if (!f.open(QIODevice::ReadOnly)) return;
-
-    const QJsonArray arr = QJsonDocument::fromJson(f.readAll()).array();
-    for (const QJsonValue& v : arr) {
+    for (const QJsonValue& v : QJsonDocument::fromJson(f.readAll()).array()) {
         const QJsonObject o = v.toObject();
-
         ScanRecord r;
-        r.when            = QDateTime::fromString(o["when"].toString(), Qt::ISODate);
-        r.mode            = o["mode"].toString();
-        r.durationMs      = o["durationMs"].toInt();
-        r.objectsScanned  = o["objects"].toVariant().toLongLong();
-        r.totalThreats    = o["threats"].toInt();
-        r.criticalThreats = o["critical"].toInt();
-        r.cancelled       = o["cancelled"].toBool();
-        r.reportPath      = o["reportPath"].toString();
-
-        for (const QJsonValue& fv : o["findings"].toArray()) {
-            const QJsonObject fo = fv.toObject();
-            r.findings.push_back({ fo["severity"].toString(),
-                                   fo["name"].toString(),
-                                   fo["source"].toString() });
-        }
-        records_.push_back(r);
+        r.when       = QDateTime::fromString(o["when"].toString(), Qt::ISODate);
+        r.mode       = o["mode"].toInt();
+        r.bySchedule = o["bySchedule"].toBool();
+        r.durationMs = o["durationMs"].toInt();
+        r.objects    = static_cast<qint64>(o["objects"].toDouble());
+        r.threats    = o["threats"].toInt();
+        r.critical   = o["critical"].toInt();
+        r.cancelled  = o["cancelled"].toBool();
+        r.reportPath = o["reportPath"].toString();
+        r.target     = o["target"].toString();
+        for (const QJsonValue& fv : o["findings"].toArray())
+            r.findings.push_back(ThreatJson::FromJson(fv.toObject()));
+        if (r.when.isValid()) records_.push_back(r);
     }
 }
 
+void ScanHistory::setTransient(const QVector<ScanRecord>& records) {
+    transient_ = true;
+    records_ = records;
+    emit changed();
+}
+
 void ScanHistory::save() const {
+    if (transient_) return;
     QJsonArray arr;
     for (const ScanRecord& r : records_) {
-        QJsonArray findings;
-        for (const auto& f : r.findings) {
-            findings.append(QJsonObject{ { "severity", f.severity },
-                                         { "name", f.name },
-                                         { "source", f.source } });
-        }
-        arr.append(QJsonObject{
-            { "when",       r.when.toString(Qt::ISODate) },
-            { "mode",       r.mode },
-            { "durationMs", r.durationMs },
-            { "objects",    QJsonValue::fromVariant(r.objectsScanned) },
-            { "threats",    r.totalThreats },
-            { "critical",   r.criticalThreats },
-            { "cancelled",  r.cancelled },
-            { "reportPath", r.reportPath },
-            { "findings",   findings },
-        });
+        QJsonObject o;
+        o["when"]       = r.when.toString(Qt::ISODate);
+        o["mode"]       = r.mode;
+        o["bySchedule"] = r.bySchedule;
+        o["durationMs"] = r.durationMs;
+        o["objects"]    = static_cast<double>(r.objects);
+        o["threats"]    = r.threats;
+        o["critical"]   = r.critical;
+        o["cancelled"]  = r.cancelled;
+        o["reportPath"] = r.reportPath;
+        o["target"]     = r.target;
+        QJsonArray found;
+        for (const Threat& t : r.findings) found.append(ThreatJson::ToJson(t));
+        o["findings"] = found;
+        arr.append(o);
     }
-
-    QFile f(filePath());
-    if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate)) return;
-    f.write(QJsonDocument(arr).toJson(QJsonDocument::Indented));
+    // Через временный файл: оборванная запись не должна стереть историю.
+    QSaveFile f(filePath());
+    if (!f.open(QIODevice::WriteOnly)) return;
+    f.write(QJsonDocument(arr).toJson(QJsonDocument::Compact));
+    f.commit();
 }
 
 void ScanHistory::add(const ScanRecord& r) {
     records_.prepend(r);
     while (records_.size() > kMaxRecords) records_.removeLast();
     save();
-}
-
-void ScanHistory::importServiceScans() {
-    QFile file(QString::fromStdWString(ServiceConfig::ResultsPath()));
-    if (!file.open(QIODevice::ReadOnly)) return;   // служба ещё не работала
-
-    const QJsonArray scans = QJsonDocument::fromJson(file.readAll()).array();
-    file.close();
-
-    bool added = false;
-    for (const QJsonValue& value : scans) {
-        const QJsonObject o = value.toObject();
-        const QDateTime when =
-            QDateTime::fromString(o["when"].toString(), Qt::ISODate);
-        if (!when.isValid()) continue;
-
-        // Файл службы мы не чистим — она пишет в него сама. Поэтому
-        // на каждом заходе отбрасываем то, что уже забрали.
-        bool known = false;
-        for (const ScanRecord& existing : records_) {
-            if (existing.mode == "Service" && existing.when == when) {
-                known = true;
-                break;
-            }
-        }
-        if (known) continue;
-
-        ScanRecord record;
-        record.when            = when;
-        record.mode            = "Service";
-        record.durationMs      = o["durationMs"].toInt();
-        record.objectsScanned  = o["objects"].toVariant().toLongLong();
-        record.totalThreats    = o["threats"].toInt();
-        record.criticalThreats = o["critical"].toInt();
-        records_.push_back(record);
-        added = true;
-    }
-
-    if (!added) return;
-
-    std::sort(records_.begin(), records_.end(),
-              [](const ScanRecord& a, const ScanRecord& b) {
-                  return a.when > b.when;
-              });
-    while (records_.size() > kMaxRecords) records_.removeLast();
-    save();
+    emit changed();
 }
 
 void ScanHistory::clear() {
     records_.clear();
     save();
+    emit changed();
+}
+
+int ScanHistory::importServiceScans() {
+    const QString path = QString::fromStdWString(ServiceConfig::ResultsPath());
+    QFile f(path);
+    if (!f.open(QIODevice::ReadOnly)) return 0;
+    const QJsonArray arr = QJsonDocument::fromJson(f.readAll()).array();
+
+    // Что уже подтянуто — по времени записи. Файл службы общий, удалять
+    // из него записи интерфейс не может (он в ProgramData и принадлежит SYSTEM).
+    QSettings s("ThreatScanner", "ThreatScanner");
+    const QDateTime seen = s.value("history/serviceSeen").toDateTime();
+    QDateTime newest = seen;
+    int added = 0;
+
+    for (const QJsonValue& v : arr) {
+        const QJsonObject o = v.toObject();
+        const QDateTime when = QDateTime::fromString(o["when"].toString(), Qt::ISODate);
+        if (!when.isValid() || (seen.isValid() && when <= seen)) continue;
+        ScanRecord r;
+        r.when = when;
+        r.mode = o["mode"].toString() == "Full" ? 1 : 0;
+        r.bySchedule = true;
+        r.durationMs = o["durationMs"].toInt();
+        r.objects = static_cast<qint64>(o["objects"].toDouble());
+        r.threats = o["threats"].toInt();
+        r.critical = o["critical"].toInt();
+        r.cancelled = o["cancelled"].toBool();
+        for (const QJsonValue& fv : o["findings"].toArray())
+            r.findings.push_back(ThreatJson::FromJson(fv.toObject()));
+        records_.push_back(r);
+        if (!newest.isValid() || when > newest) newest = when;
+        ++added;
+    }
+    if (added) {
+        std::sort(records_.begin(), records_.end(),
+                  [](const ScanRecord& a, const ScanRecord& b) { return a.when > b.when; });
+        while (records_.size() > kMaxRecords) records_.removeLast();
+        s.setValue("history/serviceSeen", newest);
+        save();
+        emit changed();
+    }
+    return added;
 }
 
 QString ScanHistory::exportText(const ScanRecord& r) const {
+    const QLocale loc = Lang::instance().current() == Lang::Id::Ru ? QLocale(QLocale::Russian)
+                                                                    : QLocale(QLocale::English);
     QString out;
-    out += "Threat Scanner — " + TR("Scan report") + "\n";
-    out += QString(60, '=') + "\n\n";
-
-    out += TR("Date") + ": " + r.when.toString("yyyy-MM-dd HH:mm:ss") + "\n";
-    out += TR("Mode") + ": " + r.mode + "\n";
-    out += TR("Duration") + ": " + QString::number(r.durationMs / 1000) + " "
-         + TR("s") + "\n";
-    out += TR("Objects checked") + ": "
-         + QLocale().toString(r.objectsScanned) + "\n";
-    out += TR("Threats found") + ": " + QString::number(r.totalThreats)
-         + " (" + TR("critical") + ": "
-         + QString::number(r.criticalThreats) + ")\n";
-    if (r.cancelled) out += TR("Scan was cancelled before it finished.") + "\n";
-
-    out += "\n" + QString(60, '-') + "\n";
-
-    if (r.findings.isEmpty() && r.totalThreats > 0) {
-        // Служба находки не сохраняет — только счётчики. Написать здесь
-        // «ничего не найдено» значило бы соврать.
-        out += TR("This scan ran in the background; the list of findings "
-                  "was not kept.") + "\n";
-    } else if (r.findings.isEmpty()) {
-        out += TR("Nothing suspicious was found.") + "\n";
-    } else {
-        for (const auto& f : r.findings) {
-            out += QString("[%1] %2\n    %3\n")
-                       .arg(f.severity, -5).arg(f.name, f.source);
+    out += TR("Threat Scanner — scan report") + "\n";
+    out += QString(40, QChar('=')) + "\n\n";
+    out += TR("Date") + ": " + loc.toString(r.when, QLocale::LongFormat) + "\n";
+    out += TR("Scan type") + ": " + (r.mode == 3 ? TR("Sandbox") : Texts::modeLabel(r.mode)) + "\n";
+    if (!r.target.isEmpty()) out += TR("Target") + ": " + r.target + "\n";
+    out += TR("Duration") + ": " + Ui::formatDuration(r.durationMs) + "\n";
+    out += TR("Objects checked") + ": " + QString::number(r.objects) + "\n";
+    out += TR("Threats found") + ": " + QString::number(r.threats) + "\n";
+    if (r.cancelled) out += TR("The scan was stopped before it finished.") + "\n";
+    out += "\n";
+    if (r.findings.isEmpty()) {
+        out += TR("Nothing dangerous was found.") + "\n";
+        return out;
+    }
+    int n = 1;
+    for (const Threat& t : r.findings) {
+        out += QString("%1. [%2] %3\n").arg(n++).arg(Texts::severityLabel(t.severity),
+                                                   QString::fromStdWString(t.name));
+        out += "   " + Texts::headline(t) + "\n";
+        out += "   " + TR("Location") + ": " + QString::fromStdWString(t.source) + "\n";
+        out += "   " + TR("Status") + ": " + Texts::statusLabel(t.status) + "\n";
+        for (const Texts::Reason& reason : Texts::reasons(t)) {
+            out += "   - " + reason.text;
+            if (!reason.detail.isEmpty()) out += " (" + reason.detail + ")";
+            out += "\n";
         }
+        if (!t.sha256.empty()) out += "   SHA-256: " + QString::fromStdString(t.sha256) + "\n";
+        out += "\n";
     }
     return out;
 }

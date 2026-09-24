@@ -17,7 +17,7 @@ if(MSVC)
     add_compile_options(/utf-8 /permissive-)
 endif()
 
-find_package(Qt6 REQUIRED COMPONENTS Core Widgets Gui Network Svg)
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets Gui Network Svg Concurrent)
 find_package(unofficial-libyara CONFIG REQUIRED)
 find_package(ZLIB REQUIRED)
 
@@ -125,7 +125,7 @@ set_target_properties(ThreatScanner PROPERTIES AUTOMOC ON AUTORCC ON)
 target_include_directories(ThreatScanner PRIVATE src)
 target_link_libraries(ThreatScanner PRIVATE
     ts_sandbox ts_scan ts_engine
-    Qt6::Core Qt6::Widgets Qt6::Gui Qt6::Network Qt6::Svg
+    Qt6::Core Qt6::Widgets Qt6::Gui Qt6::Network Qt6::Svg Qt6::Concurrent
     dwmapi uxtheme
 )
 if(MSVC)
@@ -167,6 +167,12 @@ target_link_libraries(ThreatService PRIVATE ts_scan ts_engine Qt6::Core)
 add_executable(engine_scan tools/engine_scan.cpp)
 target_link_libraries(engine_scan PRIVATE ts_engine)
 
+add_executable(engine_selftest tools/engine_selftest.cpp)
+target_link_libraries(engine_selftest PRIVATE ts_engine)
+
+add_executable(scan_cli tools/scan_cli.cpp)
+target_link_libraries(scan_cli PRIVATE ts_scan ts_engine Qt6::Core)
+
 add_executable(dynmon_test tools/dynmon_test.cpp
     src/core/SandboxEnvironment.cpp src/core/WsbGenerator.cpp)
 target_link_libraries(dynmon_test PRIVATE ts_behavior)
@@ -179,7 +185,7 @@ add_executable(ipc_test tools/ipc_test.cpp
 set_target_properties(ipc_test PROPERTIES AUTOMOC ON)
 target_link_libraries(ipc_test PRIVATE ts_engine Qt6::Core)
 
-foreach(T ThreatAgent ThreatHelper ThreatService engine_scan dynmon_test sandbox_test ipc_test)
+foreach(T ThreatAgent ThreatHelper ThreatService engine_scan engine_selftest scan_cli dynmon_test sandbox_test ipc_test)
     target_include_directories(${T} PRIVATE src)
     target_compile_definitions(${T} PRIVATE ${TS_DEFINES})
 endforeach()
@@ -189,7 +195,7 @@ add_dependencies(ThreatScanner ThreatAgent ThreatHelper ThreatService)
 # ─── Файлы рядом с exe ───────────────────────────────────────────────────
 # Базы сигнатур, плагины Qt и OpenSSL: без плагинов нет окна и https.
 set(VCPKG_ROOT_DIR "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}")
-foreach(T ThreatScanner engine_scan)
+foreach(T ThreatScanner engine_scan engine_selftest scan_cli)
     add_custom_command(TARGET ${T} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_SOURCE_DIR}/res/signatures"
                 "$<TARGET_FILE_DIR:${T}>/signatures")

@@ -156,20 +156,38 @@ std::string FamilyFromRule(const std::string& rule) {
         "INDICATOR", "SUSP", "NET", "DOTNET", "X64", "X86", "Generic", "Detect",
         "WITHSECURELABS", "EMBEERESEARCH", "ELCEEF", "SECUINFRA", "NCSC", "CRAIU",
         "TELEKOM", "SECURITY", "CADOSECURITY", "SBOUSSEADEN", "COD3NYM", "IIS",
+        "Infostealer", "INFOSTEALER", "Str", "Stealers", "Keylogger", "Miner", "Dropper",
+        "Downloader", "Injector", "Hacktool", "HKTL", "PUA", "Lnx", "Linux", "Mem", "Hunting",
+        "RULE", "Rule", "Ind", "Sus", "B64", "Obfusc", "MSIL", "PE", "DLL", "EXE", "Bin",
+        "OBF", "Indicators", "Indicator", "Auto", "Stub",
     };
     auto noise = [&](const std::string& p) {
         if (p.empty()) return true;
         if (std::all_of(p.begin(), p.end(), [](unsigned char c) { return std::isdigit(c); }))
             return true;
         if (p.size() <= 3 && std::isdigit(static_cast<unsigned char>(p.back()))) return true;
+        // Даты вида Jan24, 2023, v2.
+        if (p.size() <= 6 && std::isdigit(static_cast<unsigned char>(p.back())) &&
+            std::isalpha(static_cast<unsigned char>(p.front())) && p.size() >= 4)
+            return true;
         for (const char* k : kNoise) if (p == k) return true;
         return false;
     };
 
+    // Семейство — первая непрерывная серия «значащих» частей: у Malpedia
+    // название бывает из двух слов (Agent_Tesla → «Agent Tesla»).
+    std::string family;
+    int taken = 0;
     for (const std::string& p : parts) {
-        if (!noise(p) && p.size() >= 3) return p;
+        if (noise(p) || p.size() < 3) {
+            if (!family.empty()) break;
+            continue;
+        }
+        if (!family.empty()) family += ' ';
+        family += p;
+        if (++taken == 3) break;
     }
-    return {};
+    return family;
 }
 
 const char* ClassCode(MalwareClass cls) {

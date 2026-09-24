@@ -4,7 +4,10 @@
 #include "Logger.h"
 
 #include "../engine/FileAnalyzer.h"
+#include "../engine/Parallel.h"
 #include "../engine/TrustVerifier.h"
+
+#include <mutex>
 
 #include <Windows.h>
 #include <TlHelp32.h>
@@ -104,13 +107,35 @@ void ProcessScanner::Scan(IReportSink& sink, CancelToken& cancel, const ScanConf
     opt.reportPua = config.reportPua;
 
     // Один образ — одна проверка: у браузера бывает три десятка процессов.
+    // Образы проверяются параллельно, потом процессы разбираются по готовым
+    // вердиктам.
     std::unordered_map<std::wstring, Verdict> verdicts;
+    {
+        std::vector<std::wstring> images;
+        for (const Proc& p : procs) {
+            if (p.path.empty() || config.IsExcludedPath(p.path)) continue;
+            const std::wstring key = Lower(p.path);
+            if (verdicts.emplace(key, Verdict{}).second) images.push_back(p.path);
+        }
+        std::mutex lock;
+        std::atomic<size_t> done{ 0 };
+        ParallelFor(images.size(), [&](size_t i) {
+            if (cancel.IsCancelled()) return;
+            Verdict v = FileAnalyzer::Analyze(images[i], opt);
+            {
+                std::lock_guard<std::mutex> g(lock);
+                verdicts[Lower(images[i])] = std::move(v);
+            }
+            const size_t d = ++done;
+            sink.Item(images[i]);
+            sink.Progress("Processes", static_cast<int>(90 * d / std::max<size_t>(images.size(), 1)));
+        });
+    }
     long long checked = 0;
 
     for (size_t i = 0; i < procs.size() && !cancel.IsCancelled(); ++i) {
         const Proc& p = procs[i];
-        sink.Progress("Processes", static_cast<int>(100 * i / std::max<size_t>(procs.size(), 1)));
-        sink.Item(p.path.empty() ? p.name : p.path);
+        sink.Progress("Processes", 90 + static_cast<int>(10 * i / std::max<size_t>(procs.size(), 1)));
         sink.Checked(++checked);
 
         Threat t;
@@ -123,10 +148,9 @@ void ProcessScanner::Scan(IReportSink& sink, CancelToken& cancel, const ScanConf
         bool flagged = false;
 
         if (!p.path.empty() && !config.IsExcludedPath(p.path)) {
-            const std::wstring key = Lower(p.path);
-            auto it = verdicts.find(key);
-            if (it == verdicts.end()) it = verdicts.emplace(key, FileAnalyzer::Analyze(p.path, opt)).first;
-            const Verdict& v = it->second;
+            const auto it = verdicts.find(Lower(p.path));
+            const Verdict clean;
+            const Verdict& v = it != verdicts.end() ? it->second : clean;
             if (v.level != Verdict::Clean && !config.IsAllowedHash(v.sha256)) {
                 Detections::FillFromVerdict(t, v);
                 t.summary = Detections::SummaryOf(v);

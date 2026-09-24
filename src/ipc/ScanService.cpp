@@ -133,6 +133,20 @@ bool ScanService::Handle(const QString& command, const QJsonObject& args,
         return true;
     }
 
+    if (command == kCmdQuarantineFile) {
+        const std::wstring path = args["path"].toString().toStdWString();
+        if (path.empty()) {
+            *error = "path is required";
+            return true;
+        }
+        const auto id = Quarantine::Instance().QuarantineFile(
+            path, args["name"].toString().toStdWString(), args["severity"].toString().toStdWString());
+        (*result)["success"] = id.has_value();
+        (*result)["reboot"] = Quarantine::Instance().LastPendingReboot();
+        if (!id) *error = "the file could not be moved to quarantine";
+        return true;
+    }
+
     if (command == kCmdAddThreat) {
         // Находка приходит снаружи — её нашла страница поведения, а не
         // проверка. Список угроз один на всех, и действия к ней должны

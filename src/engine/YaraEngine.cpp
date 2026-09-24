@@ -215,3 +215,28 @@ std::vector<YaraEngine::Hit> YaraEngine::ScanHandle(void* fileHandle, int timeou
     }
     return hits;
 }
+
+bool YaraEngine::Validate(const std::string& text, std::string* error, int* count) {
+    Get();   // yr_initialize
+    YR_COMPILER* compiler = nullptr;
+    if (yr_compiler_create(&compiler) != ERROR_SUCCESS) {
+        if (error) *error = "cannot create YARA compiler";
+        return false;
+    }
+    CompileContext ctx;
+    yr_compiler_set_callback(compiler, OnCompileMessage, &ctx);
+    yr_compiler_add_string(compiler, text.c_str(), nullptr);
+    YR_RULES* rules = nullptr;
+    if (ctx.errors == 0) yr_compiler_get_rules(compiler, &rules);
+    yr_compiler_destroy(compiler);
+    if (!rules) {
+        if (error) *error = ctx.firstError;
+        return false;
+    }
+    int n = 0;
+    YR_RULE* rule = nullptr;
+    yr_rules_foreach(rules, rule) { ++n; }
+    yr_rules_destroy(rules);
+    if (count) *count = n;
+    return n > 0;
+}

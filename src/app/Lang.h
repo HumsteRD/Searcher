@@ -1,14 +1,16 @@
 #pragma once
 
-#include <QObject>
-#include <QString>
 #include <QHash>
+#include <QObject>
+#include <QSet>
+#include <QString>
 
 // Локализация интерфейса.
 //
-// Ключом служит английская строка — она же и есть английский перевод,
-// поэтому непереведённое место деградирует в осмысленный английский,
-// а не в пустоту или в «MISSING_KEY».
+// Ключ — английская строка, она же английский перевод: непереведённое
+// место показывается осмысленным английским, а не пустотой. Русский
+// словарь — в LangRu.cpp. Режим снимков экрана (--shots) собирает ключи
+// без перевода и пишет их в файл — так пропуски видно до релиза.
 class Lang : public QObject {
     Q_OBJECT
 
@@ -18,10 +20,16 @@ public:
     static Lang& instance();
 
     Id   current() const { return current_; }
-    void setLanguage(Id id);
+    void setLanguage(Id id);          // сохраняет выбор и шлёт languageChanged
 
-    // Перевод. Вызывать через макрос TR() ниже.
     QString translate(const QString& key) const;
+
+    // Ключи, для которых не нашлось перевода (только при включённом учёте).
+    void trackMissing(bool on) { track_ = on; }
+    QSet<QString> missing() const { return missing_; }
+
+    // Язык системы: русский, если интерфейс Windows русский.
+    static Id systemDefault();
 
 signals:
     void languageChanged();
@@ -29,18 +37,20 @@ signals:
 private:
     Lang();
 
-    Id current_ = Id::En;
+    Id current_ = Id::Ru;
     QHash<QString, QString> ru_;
+    bool track_ = false;
+    mutable QSet<QString> missing_;
 };
 
-// Короткая форма. Намеренно не tr(): у нас нет .qm-файлов,
-// словарь лежит в коде и переключается без перезапуска.
 inline QString TR(const QString& key) {
     return Lang::instance().translate(key);
 }
 
-// Существительное при числе. В русском форм три, в английском две, общего
-// правила нет — поэтому вызывающий передаёт все формы сразу.
-// TRN(4, "process", "processes", "процесс", "процесса", "процессов")
-QString TRN(int count, const QString& enOne, const QString& enMany,
+// Существительное при числе: в русском три формы, в английском две.
+// TRN(4, "file", "files", "файл", "файла", "файлов") → «файла».
+QString TRN(qint64 count, const QString& enOne, const QString& enMany,
             const QString& ruOne, const QString& ruFew, const QString& ruMany);
+
+// Заполнение русского словаря — в LangRu.cpp.
+void FillRussian(QHash<QString, QString>& dict);

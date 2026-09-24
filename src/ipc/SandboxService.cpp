@@ -4,6 +4,8 @@
 #include "../core/BehaviorReportJson.h"
 #include "../core/Logger.h"
 
+#include <Windows.h>
+
 #include <QStandardPaths>
 #include <QDir>
 #include <QDateTime>
@@ -28,6 +30,33 @@ bool SandboxService::Handle(const QString& command, const QJsonObject& args,
 {
     if (command == kCmdSandboxCancel) {
         cancel_.Cancel();
+        return true;
+    }
+
+    if (command == kCmdSandboxEnable) {
+        // DISM ставит компонент и просит перезагрузку (код 3010).
+        wchar_t system[MAX_PATH] = {};
+        GetSystemDirectoryW(system, MAX_PATH);
+        std::wstring cmd = std::wstring(L"\"") + system + L"\\dism.exe\" /online "
+                           L"/enable-feature /featurename:Containers-DisposableClientVM /all /norestart /quiet";
+        STARTUPINFOW si{ sizeof(si) };
+        si.dwFlags = STARTF_USESHOWWINDOW;
+        si.wShowWindow = SW_HIDE;
+        PROCESS_INFORMATION pi{};
+        if (!CreateProcessW(nullptr, cmd.data(), nullptr, nullptr, FALSE, CREATE_NO_WINDOW,
+                            nullptr, nullptr, &si, &pi)) {
+            *error = "cannot start DISM";
+            return true;
+        }
+        WaitForSingleObject(pi.hProcess, 10 * 60 * 1000);
+        DWORD code = 1;
+        GetExitCodeProcess(pi.hProcess, &code);
+        CloseHandle(pi.hThread);
+        CloseHandle(pi.hProcess);
+        Logger::Instance().Info("[Sandbox] DISM enable-feature exit code " + std::to_string(code));
+        (*result)["code"] = static_cast<int>(code);
+        (*result)["success"] = code == 0 || code == 3010;
+        (*result)["reboot"] = code == 3010;
         return true;
     }
 

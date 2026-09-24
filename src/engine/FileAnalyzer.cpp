@@ -485,7 +485,7 @@ Verdict Analyze(const std::wstring& path, const Options& opt) {
             if (!v.sha256.empty()) CollectFromHash(v.sha256, {}, ev);
             if (opt.useYara) CollectFromYara(YaraEngine::Get().Scan(buffer.data(), total), {}, ev);
             if (ScriptHeuristics::IsScriptExtension(ExtOf(path)))
-                ev.script = ScriptHeuristics::Analyze(buffer.data(), total);
+                ev.script = ScriptHeuristics::Analyze(buffer.data(), total, ExtOf(path), LowerW(path));
 
             if (opt.unpack) {
                 size_t budget = 160u << 20;
@@ -511,8 +511,21 @@ Verdict Analyze(const std::wstring& path, const Options& opt) {
             v.sha256 = ToHex(digest, 32);
             CollectFromHash(v.sha256, {}, ev);
         }
-        if (opt.useYara && size <= opt.maxContentSize) {
-            CollectFromYara(YaraEngine::Get().ScanHandle(file), {}, ev);
+        // Сигнатуры — по первым 64 МБ. Код программы в начале файла, а
+        // сотни мегабайт после него — ресурсы игр или «раздувание» нулями,
+        // которым вредоносы уходят от проверок с пределом по размеру.
+        if (opt.useYara) {
+            std::vector<uint8_t> head(kInMemoryLimit);
+            LARGE_INTEGER zero{};
+            SetFilePointerEx(file, zero, nullptr, FILE_BEGIN);
+            size_t total = 0;
+            DWORD got = 0;
+            while (total < head.size() &&
+                   ReadFile(file, head.data() + total,
+                            static_cast<DWORD>(std::min<size_t>(head.size() - total, 16u << 20)), &got, nullptr) &&
+                   got > 0)
+                total += got;
+            if (total > 0) CollectFromYara(YaraEngine::Get().Scan(head.data(), total), {}, ev);
         }
     }
     CloseHandle(file);

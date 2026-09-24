@@ -32,6 +32,10 @@ public:
     bool Prepare(bool includeExtended, std::string* error = nullptr);
 
     bool Ready() const;
+
+    // Проверить, что текст правил компилируется. Используется перед тем,
+    // как скачанное обновление заменит рабочий файл. count — число правил.
+    static bool Validate(const std::string& text, std::string* error, int* count = nullptr);
     int  RuleCount() const;
 
     // Потокобезопасно: одни и те же правила сканируют несколько потоков.

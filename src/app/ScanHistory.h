@@ -1,58 +1,57 @@
 #pragma once
 
+#include "../core/ThreatReport.h"
+
+#include <QDateTime>
+#include <QObject>
 #include <QString>
 #include <QVector>
-#include <QDateTime>
 
-// История проверок. Хранится в JSON рядом с настройками, поэтому
-// результаты переживают закрытие приложения — до этого каждая проверка
-// исчезала вместе с окном.
+// История проверок: переживает перезапуск, хранится в JSON в папке
+// данных пользователя. Туда же подтягиваются проверки фоновой службы.
 struct ScanRecord {
     QDateTime when;
-    QString   mode;             // Quick / Full / Folder
+    int       mode = 0;               // ScanConfig::Mode; 3 — песочница
+    bool      bySchedule = false;     // запущена службой или расписанием
     int       durationMs = 0;
-    qint64    objectsScanned = 0;
-    int       totalThreats = 0;
-    int       criticalThreats = 0;
+    qint64    objects = 0;
+    int       threats = 0;
+    int       critical = 0;
     bool      cancelled = false;
-
-    // Краткая выжимка находок: уровень, имя, расположение.
-    struct Finding { QString severity, name, source; };
-    QVector<Finding> findings;
-
-    // Полный отчёт наблюдения, если запись сделана сеансом песочницы.
-    // Выжимки в findings мало: дерево процессов и лента событий живут
-    // только в этом файле, а рабочая папка сеанса удаляется вместе с
-    // копией образца.
-    QString reportPath;
+    QVector<Threat> findings;
+    QString   reportPath;             // отчёт песочницы, если есть
+    QString   target;                 // разовая проверка файла
 };
 
-class ScanHistory {
+class ScanHistory : public QObject {
+    Q_OBJECT
+
 public:
     static ScanHistory& instance();
 
     const QVector<ScanRecord>& records() const { return records_; }
-
     void add(const ScanRecord& r);
     void clear();
 
-    // Подобрать проверки, сделанные фоновой службой. Она работает под
-    // SYSTEM и о нашей истории ничего не знает — складывает результаты
-    // в общий файл в %ProgramData%, откуда их и забираем.
-    void importServiceScans();
+    // Проверки, сделанные службой, пока окно было закрыто.
+    int importServiceScans();
 
-    // Отчёт по одной проверке в виде читаемого текста.
+    // Подменить записи в памяти без записи на диск (снимки экрана).
+    void setTransient(const QVector<ScanRecord>& records);
+
+    // Отчёт по одной проверке — читаемый текст на текущем языке.
     QString exportText(const ScanRecord& r) const;
 
-    QString filePath() const;
+signals:
+    void changed();
 
 private:
     ScanHistory();
     void load();
     void save() const;
+    QString filePath() const;
 
-    // Больше не храним: файл не должен расти бесконечно.
-    static constexpr int kMaxRecords = 50;
-
+    static constexpr int kMaxRecords = 100;
     QVector<ScanRecord> records_;
+    bool transient_ = false;
 };

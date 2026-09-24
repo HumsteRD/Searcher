@@ -1,6 +1,6 @@
 #include "VirusTotalClient.h"
 #include "AppSettings.h"
-#include "Logger.h"
+#include "../core/Logger.h"
 
 #include <QNetworkAccessManager>
 #include <QNetworkRequest>
@@ -69,7 +69,7 @@ VirusTotalClient::VirusTotalClient(QObject* parent)
 }
 
 bool VirusTotalClient::hasApiKey() const {
-    return !AppSettings::Get().VirusTotalKey().empty();
+    return !AppSettings::Get().virusTotalKey().isEmpty();
 }
 
 int VirusTotalClient::pendingCount() const {
@@ -111,7 +111,7 @@ void VirusTotalClient::sendNext() {
     const QString sha = item.second;
 
     const QString apiKey =
-        QString::fromStdString(AppSettings::Get().VirusTotalKey());
+        AppSettings::Get().virusTotalKey();
     if (apiKey.isEmpty()) {
         queued_.remove(index);
         emit lookupFinished(index, sha, 0, 0, false, false,
@@ -167,7 +167,7 @@ void VirusTotalClient::sendNext() {
 
 void VirusTotalClient::testApiKey() {
     const QString apiKey =
-        QString::fromStdString(AppSettings::Get().VirusTotalKey());
+        AppSettings::Get().virusTotalKey();
     if (apiKey.isEmpty()) {
         emit apiKeyTested(false, "Enter an API key first.");
         return;

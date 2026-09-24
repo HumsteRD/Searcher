@@ -38,6 +38,14 @@ public:
     static bool Validate(const std::filesystem::path& file, uint32_t* stamp = nullptr,
                          uint32_t* count = nullptr);
 
+    // Записи файла базы: ключ (первые 8 байт SHA-256) и семейство.
+    using Entry = std::pair<uint64_t, std::string>;
+    static bool ReadEntries(const std::filesystem::path& file, std::vector<Entry>& out);
+    // Записать базу. Порядок записей не важен — файл сортируется.
+    static bool WriteFile(const std::filesystem::path& file, uint32_t stamp,
+                          std::vector<Entry> entries);
+    static bool KeyFromHex(const std::string& hex, uint64_t& key);
+
 private:
     HashDatabase();
 

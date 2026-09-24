@@ -1,65 +1,75 @@
 #pragma once
 
-#include <string>
-#include <atomic>
-#include <mutex>
+#include <QByteArray>
+#include <QDateTime>
+#include <QJsonObject>
+#include <QString>
+#include <QStringList>
 
-// Настройки приложения.
-// Заголовок намеренно свободен от Qt, чтобы его мог включать чистый
-// core-код (FileSystemScanner и т.п.). Персист через QSettings — в .cpp.
+// Настройки интерфейса и проверки (HKCU\Software\ThreatScanner).
+// Помощник их не читает: всё, что нужно проверке, уезжает к нему
+// вместе с командой start_scan (scanArgs).
 class AppSettings {
 public:
     static AppSettings& Get();
 
-    // Глубокое сканирование: хэшировать все исполняемые файлы,
-    // а не только помеченные эвристикой, и обходить дерево глубже.
-    bool DeepScan() const { return deepScan_.load(); }
-    void SetDeepScan(bool v);
+    // ─── Проверка ───
+    int  scanMode() const;                 // ScanConfig::Mode
+    void setScanMode(int mode);
+    QStringList customPaths() const;
+    void setCustomPaths(const QStringList& paths);
+    bool moduleEnabled(int id) const;      // ScanConfig::Module
+    void setModuleEnabled(int id, bool on);
+    bool extendedRules() const;
+    void setExtendedRules(bool on);
+    bool reportPua() const;
+    void setReportPua(bool on);
+    bool unpackArchives() const;
+    void setUnpackArchives(bool on);
+    bool autoQuarantine() const;
+    void setAutoQuarantine(bool on);
 
-    // Автоматически отправлять Critical-угрозы в карантин.
-    bool AutoQuarantine() const { return autoQuarantine_.load(); }
-    void SetAutoQuarantine(bool v);
+    QStringList excludedPaths() const;
+    void setExcludedPaths(const QStringList& paths);
+    QStringList allowedHashes() const;
+    void addAllowedHash(const QString& sha256, const QString& label);
+    void removeAllowedHash(const QString& sha256);
+    QString allowedLabel(const QString& sha256) const;
 
-    std::string VirusTotalKey() const;
-    void SetVirusTotalKey(const std::string& key);
+    // Аргументы для помощника: режим, пути, модули, исключения.
+    // overridePaths — разовая проверка конкретных путей (перетаскивание).
+    QJsonObject scanArgs(int modeOverride = -1, const QStringList& overridePaths = {},
+                         bool filesOnly = false) const;
 
-    // ─── Область проверки ───
-    // Quick  — только самые рискованные папки, малая глубина;
-    // Full   — весь список рискованных папок;
-    // Custom — одна выбранная пользователем папка.
-    enum class ScanMode { Quick = 0, Full = 1, Custom = 2 };
+    // ─── Защита ───
+    bool downloadGuard() const;
+    void setDownloadGuard(bool on);
 
-    ScanMode Mode() const { return static_cast<ScanMode>(mode_.load()); }
-    void SetMode(ScanMode m);
+    // ─── Обновления ───
+    bool checkUpdatesOnStart() const;      // по умолчанию включено
+    void setCheckUpdatesOnStart(bool on);
+    bool autoInstallUpdates() const;       // по умолчанию выключено
+    void setAutoInstallUpdates(bool on);
+    QString skippedVersion() const;
+    void setSkippedVersion(const QString& v);
+    QDateTime lastUpdateCheck() const;
+    void setLastUpdateCheck(const QDateTime& t);
 
-    std::wstring CustomPath() const;
-    void SetCustomPath(const std::wstring& path);
+    bool autoUpdateSignatures() const;     // по умолчанию включено
+    void setAutoUpdateSignatures(bool on);
+    QDateTime lastSignatureUpdate() const;
+    void setLastSignatureUpdate(const QDateTime& t);
 
-    // Включённые модули. Индекс — ModuleId.
-    // Порядок обязан совпадать с порядком регистрации модулей
-    // в MainWindow: Scanner отбирает их по этому индексу.
-    enum ModuleId { ModRegistry = 0, ModFiles, ModProcesses,
-                    ModNetwork, ModTasks, ModScripts, ModPersistence,
-                    ModuleCount };
+    // ─── Интеграции ───
+    QString virusTotalKey() const;
+    void setVirusTotalKey(const QString& key);
 
-    bool ModuleEnabled(int id) const;
-    void SetModuleEnabled(int id, bool on);
+    // ─── Окно ───
+    QByteArray windowGeometry() const;
+    void setWindowGeometry(const QByteArray& g);
+    bool firstRunDone() const;
+    void setFirstRunDone(bool done);
 
 private:
-    AppSettings();
-    AppSettings(const AppSettings&) = delete;
-    AppSettings& operator=(const AppSettings&) = delete;
-
-    void Save();
-
-    std::atomic<bool> deepScan_{ false };
-    std::atomic<bool> autoQuarantine_{ false };
-
-    std::atomic<int>  mode_{ 1 };   // по умолчанию полная проверка
-    std::atomic<bool> modules_[ModuleCount] =
-        { {true}, {true}, {true}, {true}, {true}, {true}, {true} };
-
-    mutable std::mutex mutex_;
-    std::string        vtKey_;
-    std::wstring       customPath_;
+    AppSettings() = default;
 };

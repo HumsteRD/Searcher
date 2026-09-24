@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cstring>
 #include <fstream>
+#include <unordered_map>
 
 namespace fs = std::filesystem;
 
@@ -19,7 +20,7 @@ int HexValue(char c) {
     return -1;
 }
 
-bool KeyFromHex(const std::string& hex, uint64_t& key) {
+bool KeyFromHexImpl(const std::string& hex, uint64_t& key) {
     if (hex.size() < 16) return false;
     key = 0;
     for (int i = 0; i < 16; ++i) {
@@ -123,7 +124,7 @@ void HashDatabase::Reload() {
 
 HashDatabase::Match HashDatabase::Lookup(const std::string& sha256Hex) const {
     uint64_t key = 0;
-    if (!KeyFromHex(sha256Hex, key)) return {};
+    if (!KeyFromHexImpl(sha256Hex, key)) return {};
 
     std::lock_guard<std::mutex> lock(mutex_);
     for (const Table& t : tables_) {
@@ -162,4 +163,76 @@ uint32_t HashDatabase::NewestStamp() const {
     uint32_t s = 0;
     for (const Table& t : tables_) s = std::max(s, t.stamp);
     return s;
+}
+
+bool HashDatabase::KeyFromHex(const std::string& hex, uint64_t& key) {
+    return KeyFromHexImpl(hex, key);
+}
+
+bool HashDatabase::ReadEntries(const fs::path& file, std::vector<Entry>& out) {
+    Table t;
+    if (!LoadFile(file, t)) return false;
+    out.reserve(out.size() + t.keys.size());
+    for (size_t i = 0; i < t.keys.size(); ++i) {
+        const uint16_t f = t.family[i];
+        out.emplace_back(t.keys[i], f < t.names.size() ? t.names[f] : std::string());
+    }
+    return true;
+}
+
+bool HashDatabase::WriteFile(const fs::path& file, uint32_t stamp, std::vector<Entry> entries) {
+    std::sort(entries.begin(), entries.end(),
+              [](const Entry& a, const Entry& b) { return a.first < b.first; });
+    // Повторы ключа: оставляем запись с известным семейством.
+    std::vector<Entry> unique;
+    unique.reserve(entries.size());
+    for (auto& e : entries) {
+        if (!unique.empty() && unique.back().first == e.first) {
+            if ((unique.back().second.empty() || unique.back().second == "n/a") && !e.second.empty())
+                unique.back().second = e.second;
+            continue;
+        }
+        unique.push_back(std::move(e));
+    }
+
+    std::vector<std::string> names{ "n/a" };
+    std::vector<uint16_t> family(unique.size(), 0);
+    std::unordered_map<std::string, uint16_t> index{ { "n/a", 0 } };
+    for (size_t i = 0; i < unique.size(); ++i) {
+        const std::string& n = unique[i].second.empty() ? names[0] : unique[i].second;
+        auto it = index.find(n);
+        if (it == index.end()) {
+            if (names.size() >= 65535) continue;
+            it = index.emplace(n, static_cast<uint16_t>(names.size())).first;
+            names.push_back(n.substr(0, 255));
+        }
+        family[i] = it->second;
+    }
+
+    const fs::path tmp = fs::path(file).concat(L".tmp");
+    {
+        std::ofstream out(tmp, std::ios::binary | std::ios::trunc);
+        if (!out) return false;
+        out.write(kMagic, 8);
+        const uint32_t count = static_cast<uint32_t>(unique.size());
+        const uint32_t fams = static_cast<uint32_t>(names.size());
+        out.write(reinterpret_cast<const char*>(&stamp), 4);
+        out.write(reinterpret_cast<const char*>(&count), 4);
+        out.write(reinterpret_cast<const char*>(&fams), 4);
+        for (const std::string& n : names) {
+            const uint8_t len = static_cast<uint8_t>(std::min<size_t>(n.size(), 255));
+            out.write(reinterpret_cast<const char*>(&len), 1);
+            out.write(n.data(), len);
+        }
+        for (const Entry& e : unique) out.write(reinterpret_cast<const char*>(&e.first), 8);
+        out.write(reinterpret_cast<const char*>(family.data()), family.size() * sizeof(uint16_t));
+        if (!out) return false;
+    }
+    std::error_code ec;
+    fs::rename(tmp, file, ec);
+    if (ec) {
+        fs::remove(file, ec);
+        fs::rename(tmp, file, ec);
+    }
+    return !ec;
 }
