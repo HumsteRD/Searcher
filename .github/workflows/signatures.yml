@@ -1,14 +1,41 @@
-# Еженедельная сборка базы хэшей из MalwareBazaar.
-# Программа скачивает base.tsdb из релиза signatures-latest
-# (src/app/SignatureUpdater.cpp). Релиз помечен как пре-релиз, чтобы
-# не стать «последним» — иначе проверка обновлений программы
-# (releases/latest) увидит его вместо версии программы.
+# Базы хэшей из MalwareBazaar для релиза signatures-latest.
+#
+# Программа скачивает оттуда два файла (src/app/SignatureUpdater.cpp):
+#   base.tsdb    — полная база, пересобирается по понедельникам из полной
+#                  выгрузки;
+#   recent.tsdb  — образцы, появившиеся после последней сборки base,
+#                  обновляется каждый день.
+# Релиз помечен как пре-релиз, чтобы не стать «последним» — иначе
+# проверка обновлений программы (releases/latest) увидит его вместо
+# версии программы.
+#
+# MalwareBazaar отдаёт выгрузки только по личному ключу. Ключ бесплатный:
+# https://auth.abuse.ch/ → Auth-Key. Его нужно положить в секреты
+# репозитория под именем ABUSE_CH_AUTH_KEY (Settings → Secrets and
+# variables → Actions). Без секрета сборка останавливается с понятной
+# ошибкой и ничего не публикует. В файлы репозитория ключ не класть:
+# репозиторий открытый.
+#
+# Выгрузка recent.csv охватывает 48 часов, запуск — раз в сутки, поэтому
+# между полными сборками пропусков нет.
 name: signatures
 
 on:
   schedule:
-    - cron: "0 3 * * 1"
+    - cron: "0 3 * * *"
+  # Изменились сами скрипты сборки — пересобрать всё сразу: так правка
+  # проверяется в день, когда сделана, а не в ближайший понедельник.
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/signatures.yml"
+      - "tools/sigdb/build_sigdb.py"
   workflow_dispatch:
+    inputs:
+      rebuild_base:
+        description: "Пересобрать base.tsdb из полной выгрузки сейчас, не дожидаясь понедельника"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -21,16 +48,86 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Build base.tsdb
+
+      - name: Fetch the published databases
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          curl -sSfL -A ThreatScanner-build -o full.zip https://bazaar.abuse.ch/export/csv/full/
-          python tools/sigdb/build_sigdb.py full.zip base.tsdb
+          mkdir -p old
+          gh release download signatures-latest -p base.tsdb -D old || true
+          gh release download signatures-latest -p recent.tsdb -D old || true
+          ls -l old || true
+
+      - name: Decide what to build
+        env:
+          REBUILD_BASE: ${{ inputs.rebuild_base }}
+        run: |
+          # Полная сборка: по понедельникам, по кнопке, после правки скриптов
+          # сборки и когда базы в релизе нет.
+          if [ "$(date -u +%u)" = "1" ] || [ "$REBUILD_BASE" = "true" ] || \
+             [ "$GITHUB_EVENT_NAME" = "push" ] || [ ! -f old/base.tsdb ]; then
+            echo "FULL=1" >> "$GITHUB_ENV"
+          else
+            echo "FULL=0" >> "$GITHUB_ENV"
+          fi
+
+      - name: Download the exports
+        env:
+          ABUSE_CH_AUTH_KEY: ${{ secrets.ABUSE_CH_AUTH_KEY }}
+        run: |
+          if [ -z "$ABUSE_CH_AUTH_KEY" ]; then
+            echo "::error::Secret ABUSE_CH_AUTH_KEY is not set. Get a free Auth-Key at https://auth.abuse.ch/ and add it to the repository secrets."
+            exit 1
+          fi
+          exports="https://mb-api.abuse.ch/v2/files/exports/${ABUSE_CH_AUTH_KEY}"
+
+          # Полная выгрузка — больше двухсот мегабайт, и соединение
+          # посреди неё рвётся: докачиваем с места обрыва.
+          fetch() {
+            for attempt in 1 2 3 4 5 6; do
+              if curl -sSfL -A ThreatScanner-build -C - -o "$2" "$exports/$1"; then return 0; fi
+              echo "download of $1 interrupted, attempt $attempt"
+              sleep 10
+            done
+            return 1
+          }
+
+          fetch recent.csv recent.csv
+          if [ "$FULL" = "1" ]; then
+            fetch full.csv.zip full.csv.zip
+            python -m zipfile -t full.csv.zip > /dev/null
+          fi
+
+      - name: Build
+        run: |
+          if [ "$FULL" = "1" ]; then
+            python tools/sigdb/build_sigdb.py full.csv.zip base.tsdb
+            # Полная база не может резко похудеть: это оборванная или
+            # изменившаяся выгрузка, публиковать её нельзя.
+            if [ -f old/base.tsdb ]; then
+              old_size=$(stat -c %s old/base.tsdb)
+              new_size=$(stat -c %s base.tsdb)
+              if [ "$new_size" -lt $((old_size * 9 / 10)) ]; then
+                echo "::error::base.tsdb shrank from $old_size to $new_size bytes, refusing to publish"
+                exit 1
+              fi
+            fi
+            # Всё прежнее «свежее» теперь внутри полной базы.
+            python tools/sigdb/build_sigdb.py recent.csv recent.tsdb
+          else
+            merge_recent=""
+            [ -f old/recent.tsdb ] && merge_recent="--merge old/recent.tsdb"
+            python tools/sigdb/build_sigdb.py recent.csv recent.tsdb $merge_recent
+          fi
+
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           if ! gh release view signatures-latest >/dev/null 2>&1; then
             gh release create signatures-latest --prerelease --latest=false \
-              --title "Signatures" --notes "База хэшей MalwareBazaar для Threat Scanner. Обновляется раз в неделю."
+              --title "Signatures" --notes "Базы хэшей MalwareBazaar для Threat Scanner. Свежие записи обновляются каждый день, полная база — раз в неделю."
           fi
-          gh release upload signatures-latest base.tsdb --clobber
+          files="recent.tsdb"
+          [ -f base.tsdb ] && files="$files base.tsdb"
+          gh release upload signatures-latest $files --clobber

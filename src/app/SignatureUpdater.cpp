@@ -18,6 +18,7 @@
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QSaveFile>
+#include <QSettings>
 #include <QtConcurrent/QtConcurrentRun>
 #include <QFutureWatcher>
 
@@ -26,7 +27,6 @@ namespace {
 constexpr const char* kYaraForgeApi = "https://api.github.com/repos/YARAHQ/yara-forge/releases/latest";
 constexpr const char* kOwnSignaturesApi =
     "https://api.github.com/repos/HumsteRD/Searcher/releases/tags/signatures-latest";
-constexpr const char* kBazaarRecent = "https://bazaar.abuse.ch/export/csv/recent/";
 
 QNetworkRequest Request(const QString& url) {
     QNetworkRequest r{ QUrl(url) };
@@ -40,42 +40,14 @@ QString UpdateDir() {
     return QString::fromStdWString(SignatureStore::UpdateDir().wstring());
 }
 
-// Разбор CSV MalwareBazaar: sha256 (колонка 2), тип (7), семейство (9),
-// процент VirusTotal (11). Правила отбора — как в tools/sigdb/build_sigdb.py.
-std::vector<HashDatabase::Entry> ParseBazaarCsv(const QByteArray& csv) {
-    static const QSet<QString> kTypes = {
-        "exe", "dll", "msi", "sys", "scr", "cpl", "ocx", "js", "jse", "vbs", "vbe", "ps1", "psm1",
-        "bat", "cmd", "hta", "wsf", "lnk", "py", "jar", "zip", "rar", "7z", "iso", "img", "vhd",
-        "cab", "doc", "docx", "docm", "xls", "xlsx", "xlsm", "xlsb", "ppt", "pptx", "rtf", "one",
-        "pdf", "chm", "html", "htm", "xll", "reg", "msix", "appx",
-    };
-    std::vector<HashDatabase::Entry> out;
-    for (const QByteArray& rawLine : csv.split('\n')) {
-        const QByteArray line = rawLine.trimmed();
-        if (line.isEmpty() || line.startsWith('#')) continue;
-        // Поля в кавычках, разделитель «", "».
-        QList<QByteArray> cols = line.split(',');
-        for (QByteArray& c : cols) {
-            c = c.trimmed();
-            if (c.startsWith('"')) c.remove(0, 1);
-            if (c.endsWith('"')) c.chop(1);
-        }
-        if (cols.size() < 11) continue;
-        const std::string sha = cols[1].toLower().toStdString();
-        const QString type = QString::fromLatin1(cols[6]).toLower();
-        QString family = QString::fromUtf8(cols[8]);
-        if (sha.size() != 64 || !kTypes.contains(type)) continue;
-        if (family.isEmpty() || family == "n/a") {
-            bool ok = false;
-            const double vt = cols[10].toDouble(&ok);
-            if (!ok || vt < 10.0) continue;
-            family.clear();
-        }
-        uint64_t key = 0;
-        if (!HashDatabase::KeyFromHex(sha, key)) continue;
-        out.emplace_back(key, family.toStdString());
-    }
-    return out;
+// Какой выпуск файла из релиза уже разобран: дата и размер ресурса.
+// По ним видно, что качать нечего, без самой загрузки.
+QString SeenAsset(const QString& name) {
+    return QSettings("ThreatScanner", "ThreatScanner").value("v2/signatures/asset-" + name).toString();
+}
+
+void RememberAsset(const QString& name, const QString& stamp) {
+    QSettings("ThreatScanner", "ThreatScanner").setValue("v2/signatures/asset-" + name, stamp);
 }
 
 } // namespace
@@ -92,11 +64,10 @@ void SignatureUpdater::updateAll(bool manual) {
     manual_ = manual;
     changed_ = false;
     notes_.clear();
-    pending_ = 3;
+    pending_ = 3;   // правила, полная база хэшей, свежие хэши
     emit started();
     updateRules(AppSettings::Get().extendedRules());
-    updateBaseHashes();
-    updateRecentHashes();
+    updateHashDatabases();
 }
 
 void SignatureUpdater::doneOne(bool changed, const QString& note) {
@@ -175,85 +146,93 @@ void SignatureUpdater::updateRules(bool extended) {
     });
 }
 
-void SignatureUpdater::updateBaseHashes() {
+void SignatureUpdater::updateHashDatabases() {
+    // Обе базы хэшей лежат в релизе проекта: полная (base.tsdb) и свежие
+    // записи за последние дни (recent.tsdb). Собирает их GitHub Actions.
+    // Напрямую у MalwareBazaar программа больше ничего не берёт: выгрузки
+    // там теперь выдаются только по личному ключу, а вшивать ключ
+    // в программу, которая стоит у всех, нельзя.
     QNetworkReply* meta = nam_->get(Request(kOwnSignaturesApi));
     connect(meta, &QNetworkReply::finished, this, [this, meta]() {
         meta->deleteLater();
-        if (meta->error() != QNetworkReply::NoError) { doneOne(false, {}); return; }
-        const QJsonObject root = QJsonDocument::fromJson(meta->readAll()).object();
-        QString url;
-        qint64 size = 0;
-        for (const QJsonValue& v : root["assets"].toArray()) {
-            const QJsonObject a = v.toObject();
-            if (a["name"].toString() == "base.tsdb") {
-                url = a["browser_download_url"].toString();
-                size = static_cast<qint64>(a["size"].toDouble());
-            }
-        }
-        if (url.isEmpty() || size <= 0) { doneOne(false, {}); return; }
-
-        QNetworkReply* dl = nam_->get(Request(url));
-        connect(dl, &QNetworkReply::finished, this, [this, dl]() {
-            dl->deleteLater();
-            if (dl->error() != QNetworkReply::NoError) { doneOne(false, {}); return; }
-            const QString tmp = UpdateDir() + "/base.tsdb.download";
-            {
-                QFile f(tmp);
-                if (!f.open(QIODevice::WriteOnly)) { doneOne(false, {}); return; }
-                f.write(dl->readAll());
-            }
-            uint32_t remoteStamp = 0, count = 0;
-            if (!HashDatabase::Validate(tmp.toStdWString(), &remoteStamp, &count)) {
-                QFile::remove(tmp);
-                doneOne(false, {});
-                return;
-            }
-            const uint32_t localStamp = HashDatabase::Get().NewestStamp();
-            if (remoteStamp <= localStamp) {
-                QFile::remove(tmp);
-                doneOne(false, {});
-                return;
-            }
-            const QString target = UpdateDir() + "/base.tsdb";
-            QFile::remove(target);
-            QFile::rename(tmp, target);
-            Logger::Instance().Info("[Signatures] hash database updated: " + std::to_string(count));
-            doneOne(true, TR("%1 known malicious files").arg(count));
-        });
-    });
-}
-
-void SignatureUpdater::updateRecentHashes() {
-    QNetworkReply* dl = nam_->get(Request(kBazaarRecent));
-    connect(dl, &QNetworkReply::finished, this, [this, dl]() {
-        dl->deleteLater();
-        if (dl->error() != QNetworkReply::NoError) {
-            Logger::Instance().Warn("[Signatures] MalwareBazaar unavailable: " + dl->errorString().toStdString());
+        if (meta->error() != QNetworkReply::NoError) {
+            Logger::Instance().Warn("[Signatures] hash database check failed: " +
+                                    meta->errorString().toStdString());
+            doneOne(false, {});
             doneOne(false, {});
             return;
         }
-        const QByteArray csv = dl->readAll();
-        auto* watcher = new QFutureWatcher<int>(this);
-        connect(watcher, &QFutureWatcher<int>::finished, this, [this, watcher]() {
-            const int added = watcher->result();
-            watcher->deleteLater();
-            doneOne(added > 0, added > 0 ? TR("%1 new samples from the last days").arg(added) : QString());
-        });
-        watcher->setFuture(QtConcurrent::run([csv]() -> int {
-            std::vector<HashDatabase::Entry> fresh = ParseBazaarCsv(csv);
-            if (fresh.empty()) return 0;
-            const std::filesystem::path file = SignatureStore::UpdateDir() / L"recent.tsdb";
-            std::vector<HashDatabase::Entry> all;
-            HashDatabase::ReadEntries(file, all);
-            const size_t before = all.size();
-            all.insert(all.end(), fresh.begin(), fresh.end());
-            // Свежая часть не должна расти без конца: полная база её догонит.
-            if (all.size() > 300000) all.erase(all.begin(), all.begin() + (all.size() - 300000));
-            const uint32_t stamp = QDate::currentDate().toString("yyyyMMdd").toUInt();
-            if (!HashDatabase::WriteFile(file, stamp, all)) return 0;
-            std::vector<HashDatabase::Entry> check;
-            HashDatabase::ReadEntries(file, check);
-            return static_cast<int>(check.size() > before ? check.size() - before : 0);
-        }));
+        const QJsonArray assets = QJsonDocument::fromJson(meta->readAll()).object()["assets"].toArray();
+        fetchDatabase(assets, "base.tsdb");
+        fetchDatabase(assets, "recent.tsdb");
+    });
+}
+
+void SignatureUpdater::fetchDatabase(const QJsonArray& assets, const QString& name) {
+    QString url, assetStamp;
+    qint64 size = 0;
+    for (const QJsonValue& v : assets) {
+        const QJsonObject a = v.toObject();
+        if (a["name"].toString() != name) continue;
+        url = a["browser_download_url"].toString();
+        size = static_cast<qint64>(a["size"].toDouble());
+        assetStamp = a["updated_at"].toString() + "/" + QString::number(size);
+    }
+    // Базы свежих записей в релизе может не быть вовсе — это не ошибка.
+    if (url.isEmpty() || size <= 0) { doneOne(false, {}); return; }
+
+    // Полная база весит около десяти мегабайт, а проверка идёт несколько
+    // раз в день: тот же файл, что уже разобран, второй раз не качаем.
+    const QString target = UpdateDir() + "/" + name;
+    const bool haveData = name == "base.tsdb" ? HashDatabase::Get().Count() > 0 : QFile::exists(target);
+    if (SeenAsset(name) == assetStamp && haveData) { doneOne(false, {}); return; }
+
+    QNetworkReply* dl = nam_->get(Request(url));
+    connect(dl, &QNetworkReply::finished, this, [this, dl, size, assetStamp, name, target]() {
+        dl->deleteLater();
+        if (dl->error() != QNetworkReply::NoError) { doneOne(false, {}); return; }
+        const QByteArray body = dl->readAll();
+        if (body.size() != size) { doneOne(false, {}); return; }   // оборванная загрузка
+
+        const QString tmp = target + ".download";
+        {
+            QFile f(tmp);
+            if (!f.open(QIODevice::WriteOnly) || f.write(body) != body.size()) {
+                f.close();
+                QFile::remove(tmp);
+                doneOne(false, {});
+                return;
+            }
+        }
+        uint32_t remoteStamp = 0, count = 0;
+        if (!HashDatabase::Validate(tmp.toStdWString(), &remoteStamp, &count)) {
+            QFile::remove(tmp);
+            Logger::Instance().Warn("[Signatures] " + name.toStdString() + " from the release is not a valid database");
+            doneOne(false, {});
+            return;
+        }
+        // Этот выпуск разобран — запоминаем, чтобы не качать его снова.
+        RememberAsset(name, assetStamp);
+
+        // Старее того, что уже есть, — не ставим (у полной базы «есть» —
+        // это и копия из установки программы).
+        uint32_t localStamp = 0;
+        if (name == "base.tsdb") localStamp = HashDatabase::Get().NewestStamp();
+        else HashDatabase::ReadHeader(target.toStdWString(), &localStamp);
+        const bool newer = name == "base.tsdb" ? remoteStamp > localStamp : remoteStamp >= localStamp;
+        if (!newer) {
+            QFile::remove(tmp);
+            doneOne(false, {});
+            return;
+        }
+        QFile::remove(target);
+        if (!QFile::rename(tmp, target)) {
+            QFile::remove(tmp);
+            doneOne(false, {});
+            return;
+        }
+        Logger::Instance().Info("[Signatures] " + name.toStdString() + " updated: " + std::to_string(count) + " hashes");
+        doneOne(true, name == "base.tsdb" ? TR("%1 known malicious files").arg(count)
+                                          : TR("%1 new samples from the last days").arg(count));
     });
 }
