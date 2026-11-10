@@ -7,6 +7,8 @@
 
 #include "../core/Detections.h"
 #include "../engine/Verdict.h"
+#include "../pages/Page.h"
+#include "../ui/Shell.h"
 #include "../ui/Theme.h"
 
 #include <QApplication>
@@ -37,6 +39,7 @@ Threat MakeThreat(const wchar_t* name, const wchar_t* source, Severity sev, Malw
 
 void FillFindings() {
     AppState& st = AppState::instance();
+    st.clearItems();
     st.addLocalThreat(MakeThreat(L"invoice_2026.pdf.exe", L"C:\\Users\\Alex\\Downloads\\invoice_2026.pdf.exe",
         Severity::Critical, MalwareClass::Stealer, "AgentTesla", ThreatKind::File,
         { "hash\tAgentTesla\t", "yara\tMALPEDIA_Win_Agent_Tesla_Auto\t75\tDetects Agent Tesla payload\t",
@@ -154,7 +157,7 @@ int RunScreenshotTour(const QString& outDir) {
 
                 // Проверка в процессе.
                 AppState& st = AppState::instance();
-                st.beginScan(0, false, QString());
+                st.beginScan(0, false, QString(), { 1, 2, 3, 4, 5, 0 });
                 st.setProgress(47, "Files");
                 st.setDetail("C:\\Users\\Alex\\AppData\\Local\\Programs\\SomeApplication\\resources\\app\\node_modules\\electron\\dist\\electron.exe",
                              48213, 83000, 91000);
@@ -163,6 +166,19 @@ int RunScreenshotTour(const QString& outDir) {
                 snap(prefix + "-scan-running");
                 w.navigate(MainWindow::Home);
                 snap(prefix + "-home-running");
+                if (size.width() == 1280) {
+                    // Пауза и карточка отчёта по одному файлу.
+                    st.setPaused(true);
+                    w.navigate(MainWindow::Scan);
+                    snap(prefix + "-scan-paused");
+                    st.setPaused(false);
+                    w.showFileReport("C:\\Users\\Alex\\Downloads\\obs-studio-31.0-windows-x64-installer.exe", true, false,
+                                     QString(), "3f5a1c9e0b7d42a18e6f4c2b9d0a7e13c5b8f2d6a4e9c1b7f3a0d8e5c2b6f9a1",
+                                     "OBS Project, LLC", 148'512'768, QString(), QString());
+                    snap(prefix + "-file-report");
+                    for (Ui::Modal* m : w.findChildren<Ui::Modal*>()) m->close();
+                    Settle(60);
+                }
                 st.finishScan(false);
 
                 // Завершённая проверка с находками.
@@ -174,6 +190,14 @@ int RunScreenshotTour(const QString& outDir) {
                 for (int p = 0; p < MainWindow::PageCount; ++p) {
                     w.navigate(p);
                     snap(prefix + "-" + pageNames[p]);
+                    // Длинные страницы — экран за экраном, в одном размере
+                    // окна на тему и язык: иначе всё, что ниже первого
+                    // экрана (половина настроек, справка), никто не видит.
+                    if (size.width() != 1280) continue;
+                    Page* page = w.page(p);
+                    for (int screen = 2; page && screen <= 6 && page->scrollPageDown(); ++screen)
+                        snap(prefix + "-" + pageNames[p] + "-" + QString::number(screen));
+                    if (page) page->scrollToTop();
                 }
             }
         }

@@ -3,7 +3,7 @@
 // Русский словарь. Собирается из tools/i18n/ru.json скриптом
 // tools/i18n/extract.py --gen — править надо там, а не здесь.
 void FillRussian(QHash<QString, QString>& d) {
-    d.reserve(662);
+    d.reserve(719);
     d.insert(QStringLiteral("%1 %2"), QStringLiteral("%1 %2"));
     d.insert(QStringLiteral("%1 %2 ago"), QStringLiteral("%1 %2 назад"));
     d.insert(QStringLiteral("%1 %2 isolated. They cannot run while they are here."), QStringLiteral("В карантине %1 %2. Пока они здесь, запуститься они не могут."));
@@ -14,7 +14,9 @@ void FillRussian(QHash<QString, QString>& d) {
     d.insert(QStringLiteral("%1 MB"), QStringLiteral("%1 МБ"));
     d.insert(QStringLiteral("%1 checked %2 %3 in %4."), QStringLiteral("%1: проверено %2 %3 за %4."));
     d.insert(QStringLiteral("%1 checked in %2."), QStringLiteral("Проверено %1 за %2."));
+    d.insert(QStringLiteral("%1 connected"), QStringLiteral("Подключён диск: %1"));
     d.insert(QStringLiteral("%1 events"), QStringLiteral("событий: %1"));
+    d.insert(QStringLiteral("%1 free of %2"), QStringLiteral("свободно %1 из %2"));
     d.insert(QStringLiteral("%1 h %2 min"), QStringLiteral("%1 ч %2 мин"));
     d.insert(QStringLiteral("%1 known files, signature rules"), QStringLiteral("%1 известных файлов и правила сигнатур"));
     d.insert(QStringLiteral("%1 known malicious files"), QStringLiteral("%1 известных вредоносных файлов"));
@@ -35,6 +37,7 @@ void FillRussian(QHash<QString, QString>& d) {
     d.insert(QStringLiteral("A custom scan checks only what is in the list."), QStringLiteral("Выборочная проверка смотрит только то, что есть в списке."));
     d.insert(QStringLiteral("A hidden WMI subscription runs code on system events and survives restarts"), QStringLiteral("Скрытая подписка WMI запускает код по системным событиям и переживает перезагрузку"));
     d.insert(QStringLiteral("A quarantined file is moved into a protected folder and scrambled, so it cannot run and other antivirus programs do not react to it."), QStringLiteral("Файл в карантине перемещается в защищённую папку и шифруется: он не может запуститься, и другие антивирусы на него не реагируют."));
+    d.insert(QStringLiteral("A running scan can be paused and continued from the same place, for example for the time of a game or a video call. In Settings you can choose how much of the processor a scan may use."), QStringLiteral("Идущую проверку можно приостановить и продолжить с того же места — например, на время игры или видеозвонка. В настройках выбирается, сколько процессора проверке можно занимать."));
     d.insert(QStringLiteral("A scan is already running"), QStringLiteral("Проверка уже идёт"));
     d.insert(QStringLiteral("A technical record of what the program and its helper did. Useful if something went wrong."), QStringLiteral("Технические записи о том, что делали программа и её помощник. Пригодятся, если что-то пошло не так."));
     d.insert(QStringLiteral("A tool that attackers use. It can also have legitimate uses."), QStringLiteral("Инструмент, которым пользуются злоумышленники. Бывает и честное применение."));
@@ -44,6 +47,7 @@ void FillRussian(QHash<QString, QString>& d) {
     d.insert(QStringLiteral("Abuses a vulnerability to gain more rights or run its own code."), QStringLiteral("Использует уязвимость, чтобы получить больше прав или выполнить свой код."));
     d.insert(QStringLiteral("Action failed"), QStringLiteral("Не выполнено"));
     d.insert(QStringLiteral("Add at least one folder or file"), QStringLiteral("Добавьте хотя бы одну папку или файл"));
+    d.insert(QStringLiteral("Add drive…"), QStringLiteral("Добавить диск…"));
     d.insert(QStringLiteral("Add files…"), QStringLiteral("Добавить файлы…"));
     d.insert(QStringLiteral("Add folder…"), QStringLiteral("Добавить папку…"));
     d.insert(QStringLiteral("Added %1 background %2"), QStringLiteral("Добавлено: %1 %2 из фоновой службы"));
@@ -70,6 +74,7 @@ void FillRussian(QHash<QString, QString>& d) {
     d.insert(QStringLiteral("Background scans"), QStringLiteral("Фоновые проверки"));
     d.insert(QStringLiteral("Background service"), QStringLiteral("Фоновая служба"));
     d.insert(QStringLiteral("Background services, drivers, WMI subscriptions and the hosts file"), QStringLiteral("Фоновые службы, драйверы, подписки WMI и файл hosts"));
+    d.insert(QStringLiteral("Balanced"), QStringLiteral("Обычная"));
     d.insert(QStringLiteral("Banking trojan"), QStringLiteral("Банковский троян"));
     d.insert(QStringLiteral("Behaved dangerously when it was run in an isolated sandbox"), QStringLiteral("Вёл себя опасно при запуске в изолированной песочнице"));
     d.insert(QStringLiteral("Behavior"), QStringLiteral("Поведение"));
@@ -91,6 +96,7 @@ void FillRussian(QHash<QString, QString>& d) {
     d.insert(QStringLiteral("Changes or turns off Microsoft Defender"), QStringLiteral("Меняет настройки или отключает Microsoft Defender"));
     d.insert(QStringLiteral("Check a file"), QStringLiteral("Проверить файл"));
     d.insert(QStringLiteral("Check for new versions"), QStringLiteral("Проверять новые версии"));
+    d.insert(QStringLiteral("Check it before opening files from it."), QStringLiteral("Проверьте его, прежде чем открывать с него файлы."));
     d.insert(QStringLiteral("Check key"), QStringLiteral("Проверить ключ"));
     d.insert(QStringLiteral("Check now"), QStringLiteral("Проверить сейчас"));
     d.insert(QStringLiteral("Check on VirusTotal"), QStringLiteral("Проверить на VirusTotal"));
@@ -129,7 +135,9 @@ void FillRussian(QHash<QString, QString>& d) {
     d.insert(QStringLiteral("Connections to mining pools and remote-control ports"), QStringLiteral("Соединения с пулами майнинга и портами удалённого управления"));
     d.insert(QStringLiteral("Connects to a cryptocurrency mining pool"), QStringLiteral("Подключается к пулу майнинга криптовалюты"));
     d.insert(QStringLiteral("Contains scrambled text that hides the real content"), QStringLiteral("Содержит запутанный текст, скрывающий настоящее содержимое"));
+    d.insert(QStringLiteral("Contents"), QStringLiteral("Содержимое"));
     d.insert(QStringLiteral("Contents are checked against thousands of YARA signatures from YARA-Forge. Archives and Python programs packed with PyInstaller are unpacked and checked inside."), QStringLiteral("Содержимое сверяется с тысячами сигнатур YARA из набора YARA-Forge. Архивы и программы на Python, упакованные PyInstaller, распаковываются и проверяются изнутри."));
+    d.insert(QStringLiteral("Continue"), QStringLiteral("Продолжить"));
     d.insert(QStringLiteral("Copy"), QStringLiteral("Копировать"));
     d.insert(QStringLiteral("Copy SHA-256"), QStringLiteral("Копировать SHA-256"));
     d.insert(QStringLiteral("Could not apply the action"), QStringLiteral("Не удалось выполнить действие"));
@@ -137,10 +145,12 @@ void FillRussian(QHash<QString, QString>& d) {
     d.insert(QStringLiteral("Could not check %1"), QStringLiteral("Не удалось проверить %1"));
     d.insert(QStringLiteral("Could not check Windows Sandbox"), QStringLiteral("Не удалось проверить Windows Sandbox"));
     d.insert(QStringLiteral("Could not check for updates: %1"), QStringLiteral("Не удалось проверить обновления: %1"));
+    d.insert(QStringLiteral("Could not delete some files"), QStringLiteral("Не все файлы удалось удалить"));
     d.insert(QStringLiteral("Could not delete the file"), QStringLiteral("Не удалось удалить файл"));
     d.insert(QStringLiteral("Could not download the update"), QStringLiteral("Не удалось скачать обновление"));
     d.insert(QStringLiteral("Could not read the report"), QStringLiteral("Не удалось прочитать отчёт"));
     d.insert(QStringLiteral("Could not restore the file"), QStringLiteral("Не удалось восстановить файл"));
+    d.insert(QStringLiteral("Could not save the log"), QStringLiteral("Не удалось сохранить журнал"));
     d.insert(QStringLiteral("Could not save the report"), QStringLiteral("Не удалось сохранить отчёт"));
     d.insert(QStringLiteral("Could not start the sandbox"), QStringLiteral("Не удалось запустить песочницу"));
     d.insert(QStringLiteral("Could not turn on Windows Sandbox"), QStringLiteral("Не удалось включить Windows Sandbox"));
@@ -150,6 +160,7 @@ void FillRussian(QHash<QString, QString>& d) {
     d.insert(QStringLiteral("Creates a scheduled task to run again later"), QStringLiteral("Создаёт задачу планировщика, чтобы запускаться снова"));
     d.insert(QStringLiteral("Critical"), QStringLiteral("Критическая"));
     d.insert(QStringLiteral("Critical: %1. Neutralize them now: quarantined files stop working but can be restored."), QStringLiteral("Критических: %1. Обезвредьте их сейчас: файлы в карантине перестают работать, но их можно вернуть."));
+    d.insert(QStringLiteral("Ctrl+1 to Ctrl+9 open the pages in the order of the side menu, Ctrl+comma opens Settings, F1 opens this page. In dialogs, Enter confirms and Esc cancels."), QStringLiteral("Ctrl+1 … Ctrl+9 открывают страницы в порядке бокового меню, Ctrl+запятая — настройки, F1 — эту страницу. В диалогах Enter подтверждает, Esc отменяет."));
     d.insert(QStringLiteral("Custom scan"), QStringLiteral("Выборочная проверка"));
     d.insert(QStringLiteral("DISM exit code %1"), QStringLiteral("Код завершения DISM: %1"));
     d.insert(QStringLiteral("Daily"), QStringLiteral("Каждый день"));
@@ -179,14 +190,17 @@ void FillRussian(QHash<QString, QString>& d) {
     d.insert(QStringLiteral("Disabled"), QStringLiteral("Отключено"));
     d.insert(QStringLiteral("Disables the Windows anti-malware scan interface"), QStringLiteral("Отключает интерфейс проверки Windows на вредоносный код (AMSI)"));
     d.insert(QStringLiteral("Disguised file"), QStringLiteral("Замаскированный файл"));
+    d.insert(QStringLiteral("Do not disturb in full-screen apps"), QStringLiteral("Не беспокоить в полноэкранных приложениях"));
     d.insert(QStringLiteral("Done"), QStringLiteral("Готово"));
     d.insert(QStringLiteral("Download monitoring"), QStringLiteral("Мониторинг загрузок"));
+    d.insert(QStringLiteral("Downloaded from the internet"), QStringLiteral("Скачан из интернета"));
     d.insert(QStringLiteral("Downloading the update…"), QStringLiteral("Скачиваю обновление…"));
     d.insert(QStringLiteral("Downloading version %1…"), QStringLiteral("Скачиваю версию %1…"));
     d.insert(QStringLiteral("Downloads and installs other malware."), QStringLiteral("Скачивает и устанавливает другие вредоносные программы."));
     d.insert(QStringLiteral("Downloads code from the internet and runs it"), QStringLiteral("Скачивает код из интернета и запускает его"));
     d.insert(QStringLiteral("Downloads files from the internet"), QStringLiteral("Скачивает файлы из интернета"));
     d.insert(QStringLiteral("Drag a file anywhere into this window or choose it. The check takes seconds and does not need administrator rights."), QStringLiteral("Перетащите файл в любое место окна или выберите его. Проверка займёт секунды и не требует прав администратора."));
+    d.insert(QStringLiteral("Drive connected: %1"), QStringLiteral("Подключён диск: %1"));
     d.insert(QStringLiteral("Drop files here"), QStringLiteral("Перетащите файлы сюда"));
     d.insert(QStringLiteral("Dropped a driver into the system folder"), QStringLiteral("Положил драйвер в системную папку"));
     d.insert(QStringLiteral("Duration"), QStringLiteral("Длительность"));
@@ -207,6 +221,7 @@ void FillRussian(QHash<QString, QString>& d) {
     d.insert(QStringLiteral("Exit"), QStringLiteral("Выход"));
     d.insert(QStringLiteral("Exploit"), QStringLiteral("Эксплойт"));
     d.insert(QStringLiteral("Extended signature set"), QStringLiteral("Расширенный набор сигнатур"));
+    d.insert(QStringLiteral("F5 starts a quick scan. Ctrl+O chooses files to check. Ctrl+F searches in Results and in the Log."), QStringLiteral("F5 запускает быструю проверку. Ctrl+O — выбрать файлы для проверки. Ctrl+F — поиск в результатах и в журнале."));
     d.insert(QStringLiteral("Failed"), QStringLiteral("Не удалось"));
     d.insert(QStringLiteral("File"), QStringLiteral("Файл"));
     d.insert(QStringLiteral("File and registry changes are not attributed to a process: user-mode monitoring does not report the author of a change."), QStringLiteral("Изменения файлов и реестра не привязаны к процессу: наблюдение в пользовательском режиме не сообщает, кто их сделал."));
@@ -222,8 +237,10 @@ void FillRussian(QHash<QString, QString>& d) {
     d.insert(QStringLiteral("Files signed by known vendors such as Microsoft, NVIDIA or Google are not flagged by signatures: that is what caused false alarms in the past."), QStringLiteral("Файлы, подписанные известными производителями — Microsoft, NVIDIA, Google, — сигнатурами не помечаются: именно это раньше давало ложные тревоги."));
     d.insert(QStringLiteral("Files you marked as safe. They are identified by contents (SHA-256), so a changed file is checked again."), QStringLiteral("Файлы, которые вы отметили безопасными. Они узнаются по содержимому (SHA-256), поэтому изменённый файл будет проверен заново."));
     d.insert(QStringLiteral("Files you move to quarantine are kept here in a form that cannot run."), QStringLiteral("Файлы, отправленные в карантин, хранятся здесь в виде, который не может запуститься."));
+    d.insert(QStringLiteral("Findings"), QStringLiteral("Находки"));
     d.insert(QStringLiteral("Findings from the current scan and from files you check appear here."), QStringLiteral("Здесь появятся находки текущей проверки и проверенных вами файлов."));
     d.insert(QStringLiteral("Finishing"), QStringLiteral("Завершение"));
+    d.insert(QStringLiteral("Flash drives and external disks"), QStringLiteral("Флешки и внешние диски"));
     d.insert(QStringLiteral("Folders and files to check"), QStringLiteral("Папки и файлы для проверки"));
     d.insert(QStringLiteral("Found so far: %1"), QStringLiteral("Уже найдено: %1"));
     d.insert(QStringLiteral("Found: %1"), QStringLiteral("Найдено: %1"));
@@ -232,11 +249,14 @@ void FillRussian(QHash<QString, QString>& d) {
     d.insert(QStringLiteral("Found: %1, waiting for your decision: %2"), QStringLiteral("Найдено: %1, ждут решения: %2"));
     d.insert(QStringLiteral("Found: %1. Waiting for your decision: %2."), QStringLiteral("Найдено: %1. Ждут вашего решения: %2."));
     d.insert(QStringLiteral("Free key: sign up at virustotal.com, then open your profile and copy the API key. The free key allows 4 lookups per minute. Only file hashes are sent, never the files themselves."), QStringLiteral("Бесплатный ключ: зарегистрируйтесь на virustotal.com, откройте профиль и скопируйте ключ API. Он даёт 4 запроса в минуту. Отправляются только хэши файлов, сами файлы — никогда."));
+    d.insert(QStringLiteral("Free the disk and processor for a while. The scan continues from the same place."), QStringLiteral("Освободить диск и процессор на время. Проверка продолжится с того же места."));
     d.insert(QStringLiteral("From 10 minutes to an hour, depending on the disks"), QStringLiteral("От 10 минут до часа — зависит от дисков"));
     d.insert(QStringLiteral("Full scan"), QStringLiteral("Полная проверка"));
     d.insert(QStringLiteral("Full scan goes through every file on every local drive. Run it when you suspect an infection or after the quick scan found something."), QStringLiteral("Полная проверка проходит каждый файл на всех локальных дисках. Запускайте её, если подозреваете заражение или быстрая проверка что-то нашла."));
     d.insert(QStringLiteral("Future scans will skip files with exactly the same contents."), QStringLiteral("Следующие проверки будут пропускать файлы с точно таким же содержимым."));
     d.insert(QStringLiteral("Future scans will skip this file."), QStringLiteral("Следующие проверки будут пропускать этот файл."));
+    d.insert(QStringLiteral("Gentle"), QStringLiteral("Щадящая"));
+    d.insert(QStringLiteral("Gentle leaves the computer fully usable but takes longer. Maximum uses every processor core. Applies to the next scan."), QStringLiteral("Щадящая не мешает работать за компьютером, но идёт дольше. Полная занимает все ядра процессора. Действует со следующей проверки."));
     d.insert(QStringLiteral("Gives an attacker remote control over this computer: files, screen, camera and keyboard."), QStringLiteral("Даёт злоумышленнику удалённое управление компьютером: файлы, экран, камера, клавиатура."));
     d.insert(QStringLiteral("Gives remote control over a web server."), QStringLiteral("Даёт удалённое управление веб-сервером."));
     d.insert(QStringLiteral("Graphite"), QStringLiteral("Графит"));
@@ -272,7 +292,9 @@ void FillRussian(QHash<QString, QString>& d) {
     d.insert(QStringLiteral("Isolated %1 · %2"), QStringLiteral("Изолирован %1 · %2"));
     d.insert(QStringLiteral("Isolated and harmless"), QStringLiteral("Изолированы и безвредны"));
     d.insert(QStringLiteral("Isolated files cannot run. Restore a file if it was flagged by mistake, or delete it for good."), QStringLiteral("Изолированные файлы не могут запуститься. Верните файл, если он помечен по ошибке, или удалите навсегда."));
+    d.insert(QStringLiteral("JSON data (*.json)"), QStringLiteral("Данные JSON (*.json)"));
     d.insert(QStringLiteral("Keep running in the tray when closed"), QStringLiteral("Работать в трее после закрытия окна"));
+    d.insert(QStringLiteral("Keyboard shortcuts"), QStringLiteral("Горячие клавиши"));
     d.insert(QStringLiteral("Keylogger"), QStringLiteral("Кейлогер"));
     d.insert(QStringLiteral("Known malware is isolated at once, without waiting for your decision."), QStringLiteral("Известные вредоносы изолируются сразу, не дожидаясь вашего решения."));
     d.insert(QStringLiteral("Language"), QStringLiteral("Язык"));
@@ -285,6 +307,7 @@ void FillRussian(QHash<QString, QString>& d) {
     d.insert(QStringLiteral("Load the results of scans made by the background service while the window was closed."), QStringLiteral("Загрузить результаты проверок, которые фоновая служба сделала, пока окно было закрыто."));
     d.insert(QStringLiteral("Loading signature databases"), QStringLiteral("Загрузка баз сигнатур"));
     d.insert(QStringLiteral("Loads a library into every program that starts (AppInit_DLLs)"), QStringLiteral("Загружает библиотеку в каждую запускаемую программу (AppInit_DLLs)"));
+    d.insert(QStringLiteral("Local drive"), QStringLiteral("Локальный диск"));
     d.insert(QStringLiteral("Located in a folder where downloaded and temporary files usually end up"), QStringLiteral("Лежит в папке, куда обычно попадают скачанные и временные файлы"));
     d.insert(QStringLiteral("Location"), QStringLiteral("Расположение"));
     d.insert(QStringLiteral("Log"), QStringLiteral("Журнал"));
@@ -301,6 +324,7 @@ void FillRussian(QHash<QString, QString>& d) {
     d.insert(QStringLiteral("Matches the signature of %1"), QStringLiteral("Совпадает с сигнатурой %1"));
     d.insert(QStringLiteral("Matches the signature of known malware"), QStringLiteral("Совпадает с сигнатурой известной вредоносной программы"));
     d.insert(QStringLiteral("Maximize"), QStringLiteral("Развернуть"));
+    d.insert(QStringLiteral("Maximum"), QStringLiteral("Полная"));
     d.insert(QStringLiteral("Medium"), QStringLiteral("Средняя"));
     d.insert(QStringLiteral("Microsoft includes the sandbox only in Pro, Enterprise and Education editions. It cannot be installed on Home. Everything else in this program works as usual: check suspicious files with a scan or on VirusTotal."), QStringLiteral("Microsoft включает песочницу только в редакции Pro, Enterprise и Education, на Домашнюю её не установить. Всё остальное в программе работает как обычно: проверяйте подозрительные файлы проверкой или на VirusTotal."));
     d.insert(QStringLiteral("Minimize"), QStringLiteral("Свернуть"));
@@ -321,19 +345,25 @@ void FillRussian(QHash<QString, QString>& d) {
     d.insert(QStringLiteral("New versions of the program and fresh signature databases."), QStringLiteral("Новые версии программы и свежие базы сигнатур."));
     d.insert(QStringLiteral("Next: %1"), QStringLiteral("Следующая: %1"));
     d.insert(QStringLiteral("No action is needed. You can delete the file."), QStringLiteral("Ничего делать не нужно. Файл можно удалить."));
+    d.insert(QStringLiteral("No drives found"), QStringLiteral("Диски не найдены"));
     d.insert(QStringLiteral("No exclusions"), QStringLiteral("Исключений нет"));
     d.insert(QStringLiteral("No kernel driver: code injection, in-memory activity and direct system calls are not observed."), QStringLiteral("Драйвера ядра нет: внедрение кода, работа в памяти и прямые системные вызовы не наблюдаются."));
     d.insert(QStringLiteral("No new background scans"), QStringLiteral("Новых фоновых проверок нет"));
     d.insert(QStringLiteral("No scans yet"), QStringLiteral("Проверок ещё не было"));
     d.insert(QStringLiteral("No threats found"), QStringLiteral("Угроз не найдено"));
+    d.insert(QStringLiteral("No threats found. This is not a guarantee: a file that is new to the databases looks the same."), QStringLiteral("Угроз не найдено. Это не гарантия: файл, которого ещё нет в базах, выглядит так же."));
     d.insert(QStringLiteral("No trusted files"), QStringLiteral("Доверенных файлов нет"));
+    d.insert(QStringLiteral("Not deleted: %1"), QStringLiteral("Не удалено: %1"));
     d.insert(QStringLiteral("Not found in the databases, no signatures matched."), QStringLiteral("В базах не найден, ни одна сигнатура не совпала."));
     d.insert(QStringLiteral("Not installed"), QStringLiteral("Не установлена"));
     d.insert(QStringLiteral("Not necessarily malicious, but does things most people do not want."), QStringLiteral("Не обязательно вредоносная, но делает то, чего большинство людей не хочет."));
     d.insert(QStringLiteral("Nothing dangerous was found in the checked areas."), QStringLiteral("В проверенных местах ничего опасного не нашлось."));
     d.insert(QStringLiteral("Nothing dangerous was found."), QStringLiteral("Ничего опасного не найдено."));
     d.insert(QStringLiteral("Nothing found so far"), QStringLiteral("Пока ничего не найдено"));
+    d.insert(QStringLiteral("Nothing is being checked. Continue when you are ready."), QStringLiteral("Сейчас ничего не проверяется. Продолжите, когда будет удобно."));
+    d.insert(QStringLiteral("Nothing is being read from the disk. Press Continue when it is convenient."), QStringLiteral("С диска сейчас ничего не читается. Нажмите «Продолжить», когда будет удобно."));
     d.insert(QStringLiteral("Nothing is waiting"), QStringLiteral("Ничего не ждёт"));
+    d.insert(QStringLiteral("Nothing matches the filter."), QStringLiteral("Под фильтр ничего не подходит."));
     d.insert(QStringLiteral("Nothing notable happened while it was watched. That is not proof the file is safe."), QStringLiteral("За время наблюдения ничего примечательного не произошло. Это не доказательство, что файл безопасен."));
     d.insert(QStringLiteral("Nothing to show"), QStringLiteral("Пока пусто"));
     d.insert(QStringLiteral("Nothing typical of malware was observed."), QStringLiteral("Ничего характерного для вредоносных программ не замечено."));
@@ -347,6 +377,7 @@ void FillRussian(QHash<QString, QString>& d) {
     d.insert(QStringLiteral("Off"), QStringLiteral("Выключено"));
     d.insert(QStringLiteral("Off by default. When on, a new version is downloaded and installed without asking; the program restarts by itself. Windows asks for administrator rights for the installer."), QStringLiteral("По умолчанию выключено. Если включить, новая версия скачивается и устанавливается без вопросов, программа перезапускается сама. Для установщика Windows попросит права администратора."));
     d.insert(QStringLiteral("Off by default. With the internet on, the file can download more malware or send data, but you see its network activity."), QStringLiteral("По умолчанию выключено. С интернетом файл может скачать ещё вредоносов или отправить данные, зато видна его сетевая активность."));
+    d.insert(QStringLiteral("Offer to scan connected drives"), QStringLiteral("Предлагать проверку подключённых дисков"));
     d.insert(QStringLiteral("On: new files in Downloads and on the desktop are checked at once"), QStringLiteral("Включён: новые файлы в «Загрузках» и на рабочем столе проверяются сразу"));
     d.insert(QStringLiteral("Once a day: fresh samples from MalwareBazaar and new YARA-Forge rules."), QStringLiteral("Раз в сутки: свежие образцы из MalwareBazaar и новые правила YARA-Forge."));
     d.insert(QStringLiteral("Only the folders and files you choose."), QStringLiteral("Только выбранные папки и файлы."));
@@ -360,6 +391,7 @@ void FillRussian(QHash<QString, QString>& d) {
     d.insert(QStringLiteral("Open behavior report"), QStringLiteral("Отчёт о поведении"));
     d.insert(QStringLiteral("Open data folder"), QStringLiteral("Папка данных"));
     d.insert(QStringLiteral("Open history"), QStringLiteral("Открыть историю"));
+    d.insert(QStringLiteral("Open on VirusTotal"), QStringLiteral("Открыть на VirusTotal"));
     d.insert(QStringLiteral("Open report…"), QStringLiteral("Открыть отчёт…"));
     d.insert(QStringLiteral("Open results"), QStringLiteral("Открыть результаты"));
     d.insert(QStringLiteral("Open signatures folder"), QStringLiteral("Папка баз"));
@@ -371,8 +403,11 @@ void FillRussian(QHash<QString, QString>& d) {
     d.insert(QStringLiteral("Overview"), QStringLiteral("Обзор"));
     d.insert(QStringLiteral("Past scans are kept between sessions. Open one to see what it found."), QStringLiteral("Прошлые проверки сохраняются между запусками. Откройте любую, чтобы увидеть, что она нашла."));
     d.insert(QStringLiteral("Paste the key here"), QStringLiteral("Вставьте ключ сюда"));
+    d.insert(QStringLiteral("Pause"), QStringLiteral("Пауза"));
+    d.insert(QStringLiteral("Paused"), QStringLiteral("Проверка на паузе"));
     d.insert(QStringLiteral("Placed a file into the startup folder"), QStringLiteral("Положил файл в папку автозагрузки"));
     d.insert(QStringLiteral("Port opened"), QStringLiteral("Открыт порт"));
+    d.insert(QStringLiteral("Postponed: a full-screen app is running"), QStringLiteral("Отложена: открыто полноэкранное приложение"));
     d.insert(QStringLiteral("Potentially unwanted program"), QStringLiteral("Потенциально нежелательная программа"));
     d.insert(QStringLiteral("Preparing the isolated session"), QStringLiteral("Подготовка изолированного сеанса"));
     d.insert(QStringLiteral("Press the button to check now."), QStringLiteral("Нажмите кнопку, чтобы проверить сейчас."));
@@ -411,6 +446,7 @@ void FillRussian(QHash<QString, QString>& d) {
     d.insert(QStringLiteral("Registry was not watched: no key could be opened."), QStringLiteral("Реестр не наблюдался: не удалось открыть ни одного раздела."));
     d.insert(QStringLiteral("Remaining"), QStringLiteral("Осталось"));
     d.insert(QStringLiteral("Remote access trojan"), QStringLiteral("Троян удалённого доступа"));
+    d.insert(QStringLiteral("Removable drive"), QStringLiteral("Съёмный диск"));
     d.insert(QStringLiteral("Remove"), QStringLiteral("Убрать"));
     d.insert(QStringLiteral("Remove entry"), QStringLiteral("Удалить запись"));
     d.insert(QStringLiteral("Remove the entry and move the file it launches to quarantine."), QStringLiteral("Удалите запись и отправьте запускаемый ею файл в карантин."));
@@ -429,6 +465,7 @@ void FillRussian(QHash<QString, QString>& d) {
     d.insert(QStringLiteral("Restore %1?"), QStringLiteral("Вернуть %1?"));
     d.insert(QStringLiteral("Restore puts the file back where it was. Delete removes it for good."), QStringLiteral("«Вернуть» кладёт файл на прежнее место. «Удалить» удаляет его навсегда."));
     d.insert(QStringLiteral("Restored"), QStringLiteral("Возвращено"));
+    d.insert(QStringLiteral("Restored under a new name"), QStringLiteral("Возвращено под новым именем"));
     d.insert(QStringLiteral("Results"), QStringLiteral("Результаты"));
     d.insert(QStringLiteral("Review results"), QStringLiteral("К результатам"));
     d.insert(QStringLiteral("Review what was found and decide what to do with each item."), QStringLiteral("Посмотрите, что найдено, и решите, что делать с каждой находкой."));
@@ -463,6 +500,11 @@ void FillRussian(QHash<QString, QString>& d) {
     d.insert(QStringLiteral("Scan finished: %1 objects checked, %2 found."), QStringLiteral("Проверка завершена: проверено объектов — %1, найдено — %2."));
     d.insert(QStringLiteral("Scan in progress"), QStringLiteral("Идёт проверка"));
     d.insert(QStringLiteral("Scan in progress — %1%"), QStringLiteral("Идёт проверка — %1%"));
+    d.insert(QStringLiteral("Scan it"), QStringLiteral("Проверить"));
+    d.insert(QStringLiteral("Scan paused"), QStringLiteral("Проверка на паузе"));
+    d.insert(QStringLiteral("Scan paused — %1%"), QStringLiteral("Проверка на паузе — %1%"));
+    d.insert(QStringLiteral("Scan speed"), QStringLiteral("Скорость проверки"));
+    d.insert(QStringLiteral("Scan stages"), QStringLiteral("Этапы проверки"));
     d.insert(QStringLiteral("Scan started: %1"), QStringLiteral("Проверка запущена: %1"));
     d.insert(QStringLiteral("Scan type"), QStringLiteral("Тип проверки"));
     d.insert(QStringLiteral("Scanning"), QStringLiteral("Проверка"));
@@ -470,6 +512,8 @@ void FillRussian(QHash<QString, QString>& d) {
     d.insert(QStringLiteral("Scheduled scan"), QStringLiteral("Проверка по расписанию"));
     d.insert(QStringLiteral("Scheduled task"), QStringLiteral("Задача планировщика"));
     d.insert(QStringLiteral("Scheduled tasks"), QStringLiteral("Задачи планировщика"));
+    d.insert(QStringLiteral("Search findings"), QStringLiteral("Поиск по находкам"));
+    d.insert(QStringLiteral("Search the log"), QStringLiteral("Поиск по журналу"));
     d.insert(QStringLiteral("Select a finding"), QStringLiteral("Выберите находку"));
     d.insert(QStringLiteral("Service"), QStringLiteral("Служба"));
     d.insert(QStringLiteral("Services and drivers"), QStringLiteral("Службы и драйверы"));
@@ -487,6 +531,7 @@ void FillRussian(QHash<QString, QString>& d) {
     d.insert(QStringLiteral("Signature databases updated"), QStringLiteral("Базы сигнатур обновлены"));
     d.insert(QStringLiteral("Signature databases updated: %1"), QStringLiteral("Базы сигнатур обновлены: %1"));
     d.insert(QStringLiteral("Signature updates"), QStringLiteral("Обновление баз"));
+    d.insert(QStringLiteral("Size"), QStringLiteral("Размер"));
     d.insert(QStringLiteral("Skip"), QStringLiteral("Пропустить"));
     d.insert(QStringLiteral("Skip leaves the finding as it is. Trust tells future scans to ignore exactly this file."), QStringLiteral("«Пропустить» оставляет находку как есть. «Доверять» говорит следующим проверкам не трогать именно этот файл."));
     d.insert(QStringLiteral("Skip this version"), QStringLiteral("Пропустить эту версию"));
@@ -526,6 +571,7 @@ void FillRussian(QHash<QString, QString>& d) {
     d.insert(QStringLiteral("The file could not be read."), QStringLiteral("Файл не удалось прочитать."));
     d.insert(QStringLiteral("The file did things that ordinary programs rarely do."), QStringLiteral("Файл делал то, что обычные программы делают редко."));
     d.insert(QStringLiteral("The file goes back to where it was and can run again. Restore it only if you are sure it was flagged by mistake."), QStringLiteral("Файл вернётся на прежнее место и сможет снова запускаться. Возвращайте, только если уверены, что он помечен по ошибке."));
+    d.insert(QStringLiteral("The file is damaged or built to break scanners."), QStringLiteral("Файл повреждён или собран так, чтобы ломать проверку."));
     d.insert(QStringLiteral("The file is empty."), QStringLiteral("Файл пустой."));
     d.insert(QStringLiteral("The file runs in a disposable copy of Windows. Nothing it does reaches this computer."), QStringLiteral("Файл запускается в одноразовой копии Windows. Ничего из того, что он делает, до этого компьютера не доходит."));
     d.insert(QStringLiteral("The helper with administrator rights stopped. The next action will ask for rights again."), QStringLiteral("Помощник с правами администратора остановился. Следующее действие снова запросит права."));
@@ -540,6 +586,7 @@ void FillRussian(QHash<QString, QString>& d) {
     d.insert(QStringLiteral("The list is empty. Add folders or files with the buttons below."), QStringLiteral("Список пуст. Добавьте папки или файлы кнопками ниже."));
     d.insert(QStringLiteral("The list of past scans will be deleted. Quarantine and settings are not affected."), QStringLiteral("Список прошлых проверок будет удалён. Карантин и настройки это не затронет."));
     d.insert(QStringLiteral("The name contains a hidden character that reverses text, so the real extension is disguised"), QStringLiteral("В имени спрятан символ, переворачивающий текст, — настоящее расширение замаскировано"));
+    d.insert(QStringLiteral("The original place is taken: %1"), QStringLiteral("Прежнее место занято, файл сохранён как %1"));
     d.insert(QStringLiteral("The program keeps working in the tray. Right-click the icon to exit."), QStringLiteral("Программа продолжает работать в трее. Для выхода нажмите на значок правой кнопкой."));
     d.insert(QStringLiteral("The program restarts when it is installed."), QStringLiteral("После установки программа перезапустится."));
     d.insert(QStringLiteral("The program starts minimized to the tray, so download monitoring and the schedule keep working."), QStringLiteral("Программа стартует свёрнутой в трей — мониторинг загрузок и расписание продолжают работать."));
@@ -550,7 +597,9 @@ void FillRussian(QHash<QString, QString>& d) {
     d.insert(QStringLiteral("The sandbox runs one file at a time."), QStringLiteral("Песочница проверяет один файл за раз."));
     d.insert(QStringLiteral("The sandbox session did not complete"), QStringLiteral("Сеанс песочницы не завершился"));
     d.insert(QStringLiteral("The sandbox window opens separately. When the observation ends it closes by itself, together with everything the file changed."), QStringLiteral("Окно песочницы откроется отдельно. Когда наблюдение закончится, оно закроется само — вместе со всем, что изменил файл."));
+    d.insert(QStringLiteral("The scan continues."), QStringLiteral("Проверка продолжена."));
     d.insert(QStringLiteral("The scan did not start"), QStringLiteral("Проверка не запустилась"));
+    d.insert(QStringLiteral("The scan is paused."), QStringLiteral("Проверка приостановлена."));
     d.insert(QStringLiteral("The scan is still running. Its results so far will be lost."), QStringLiteral("Проверка ещё идёт. Уже найденное будет потеряно."));
     d.insert(QStringLiteral("The scan was stopped"), QStringLiteral("Проверка остановлена"));
     d.insert(QStringLiteral("The scan was stopped before it finished."), QStringLiteral("Проверка была остановлена до завершения."));
@@ -604,6 +653,7 @@ void FillRussian(QHash<QString, QString>& d) {
     d.insert(QStringLiteral("Wait for it to finish or stop it first."), QStringLiteral("Дождитесь её завершения или сначала остановите."));
     d.insert(QStringLiteral("Waiting for the sandbox to finish"), QStringLiteral("Ожидание завершения песочницы"));
     d.insert(QStringLiteral("Warnings"), QStringLiteral("Предупреждения"));
+    d.insert(QStringLiteral("Web page (*.html)"), QStringLiteral("Веб-страница (*.html)"));
     d.insert(QStringLiteral("Web shell"), QStringLiteral("Веб-шелл"));
     d.insert(QStringLiteral("Weekly"), QStringLiteral("Раз в неделю"));
     d.insert(QStringLiteral("What is running right now and where it was started from"), QStringLiteral("Что запущено прямо сейчас и откуда"));
@@ -614,7 +664,10 @@ void FillRussian(QHash<QString, QString>& d) {
     d.insert(QStringLiteral("What to do with a finding"), QStringLiteral("Что делать с находкой"));
     d.insert(QStringLiteral("What works in the background while the program is running."), QStringLiteral("Что работает в фоне, пока программа запущена."));
     d.insert(QStringLiteral("When a new version comes out, the program offers to install it."), QStringLiteral("Когда выходит новая версия, программа предлагает её установить."));
+    d.insert(QStringLiteral("When you connect a flash drive or an external disk, the program offers to check it. Agree before opening files from it: removable drives are the second most common way malware gets onto a computer."), QStringLiteral("Когда вы подключаете флешку или внешний диск, программа предлагает его проверить. Соглашайтесь до того, как открывать с него файлы: съёмные носители — второй по частоте путь, которым вредоносные программы попадают на компьютер."));
+    d.insert(QStringLiteral("When you plug in a flash drive or an external disk, the program offers to check it. Nothing is scanned without your click."), QStringLiteral("При подключении флешки или внешнего диска программа предлагает его проверить. Без вашего согласия ничего не проверяется."));
     d.insert(QStringLiteral("Which scan to choose"), QStringLiteral("Какую проверку выбрать"));
+    d.insert(QStringLiteral("While a game, a film or a presentation fills the screen, the scheduled scan waits and only warnings about threats are shown."), QStringLiteral("Пока на весь экран идёт игра, фильм или презентация, плановая проверка ждёт, а из уведомлений показываются только предупреждения об угрозах."));
     d.insert(QStringLiteral("While the program is open or in the tray, new files in Downloads and on the desktop are checked as soon as the browser finishes downloading them. If something dangerous arrives, you get a notification right away."), QStringLiteral("Пока программа открыта или в трее, новые файлы в «Загрузках» и на рабочем столе проверяются, как только браузер их докачал. Если пришло что-то опасное, вы сразу получите уведомление."));
     d.insert(QStringLiteral("Why administrator rights are needed"), QStringLiteral("Зачем нужны права администратора"));
     d.insert(QStringLiteral("Why it was flagged"), QStringLiteral("Почему это найдено"));
@@ -631,6 +684,7 @@ void FillRussian(QHash<QString, QString>& d) {
     d.insert(QStringLiteral("Worm"), QStringLiteral("Червь"));
     d.insert(QStringLiteral("Writes downloaded data to disk as a file"), QStringLiteral("Сохраняет скачанные данные на диск в виде файла"));
     d.insert(QStringLiteral("Wrote an executable file"), QStringLiteral("Записал исполняемый файл"));
+    d.insert(QStringLiteral("You can also add any drive to a custom scan from the list of connected drives."), QStringLiteral("Любой диск можно добавить и в выборочную проверку — из списка подключённых."));
     d.insert(QStringLiteral("You can keep working: the scan runs in the background with a lower priority."), QStringLiteral("Можно продолжать работать: проверка идёт в фоне с пониженным приоритетом."));
     d.insert(QStringLiteral("You have the latest version"), QStringLiteral("У вас последняя версия"));
     d.insert(QStringLiteral("You have the latest version (%1)."), QStringLiteral("У вас последняя версия (%1)."));
@@ -644,14 +698,17 @@ void FillRussian(QHash<QString, QString>& d) {
     d.insert(QStringLiteral("counting files…"), QStringLiteral("подсчёт файлов…"));
     d.insert(QStringLiteral("dd.MM.yyyy HH:mm"), QStringLiteral("dd.MM.yyyy HH:mm"));
     d.insert(QStringLiteral("deleted"), QStringLiteral("удалён"));
+    d.insert(QStringLiteral("done"), QStringLiteral("готово"));
     d.insert(QStringLiteral("estimating…"), QStringLiteral("оцениваю…"));
     d.insert(QStringLiteral("hosts file entry"), QStringLiteral("Запись в файле hosts"));
+    d.insert(QStringLiteral("in progress"), QStringLiteral("идёт"));
     d.insert(QStringLiteral("just now"), QStringLiteral("только что"));
     d.insert(QStringLiteral("marked as trusted, future scans skip it"), QStringLiteral("отмечен как доверенный, следующие проверки его пропустят"));
     d.insert(QStringLiteral("moved to quarantine"), QStringLiteral("отправлен в карантин"));
     d.insert(QStringLiteral("moved to quarantine, the original will be removed after a restart"), QStringLiteral("отправлен в карантин, оригинал удалится после перезагрузки"));
     d.insert(QStringLiteral("none"), QStringLiteral("нет"));
     d.insert(QStringLiteral("not loaded"), QStringLiteral("не загружены"));
+    d.insert(QStringLiteral("on pause"), QStringLiteral("на паузе"));
     d.insert(QStringLiteral("opened from a file"), QStringLiteral("открыт из файла"));
     d.insert(QStringLiteral("s"), QStringLiteral("с"));
     d.insert(QStringLiteral("signature rules from %1"), QStringLiteral("правила сигнатур от %1"));

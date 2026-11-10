@@ -371,6 +371,9 @@ Button* Modal::addButton(const QString& text, Button::Variant variant, std::func
 {
     auto* b = new Button(text, variant);
     buttons_->addWidget(b);
+    // Enter нажимает основную кнопку. Опасную (удаление) — нет: её
+    // подтверждают осознанно, мышью или Tab + пробел.
+    if (variant == Button::Variant::Primary) default_ = b;
     connect(b, &QPushButton::clicked, this, [this, onClick, closes]() {
         if (closes) close();
         if (onClick) onClick();
@@ -397,7 +400,12 @@ void Modal::place() {
     const int w = std::min(maxWidth_, width() - 48);
     card_->setFixedWidth(w);
     card_->adjustSize();
-    const int h = std::min(card_->sizeHint().height(), height() - 48);
+    // Высота — под эту ширину. sizeHint у раскладки с переносимым текстом
+    // считается для «удобной» ширины и выходит с запасом: заголовок
+    // повисал посреди пустой полосы, ниже своей иконки.
+    int wanted = card_->layout() ? card_->layout()->totalHeightForWidth(w) : -1;
+    if (wanted <= 0) wanted = card_->sizeHint().height();
+    const int h = std::min(wanted, height() - 48);
     card_->setFixedHeight(h);
     card_->move((width() - w) / 2, std::max(24, (height() - h) / 2 - 20));
 }
@@ -409,6 +417,10 @@ bool Modal::eventFilter(QObject* o, QEvent* e) {
 
 void Modal::keyPressEvent(QKeyEvent* e) {
     if (e->key() == Qt::Key_Escape) { close(); return; }
+    if ((e->key() == Qt::Key_Return || e->key() == Qt::Key_Enter) && default_) {
+        default_->click();
+        return;
+    }
     QWidget::keyPressEvent(e);
 }
 

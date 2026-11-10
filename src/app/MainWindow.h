@@ -9,6 +9,7 @@ class QStackedWidget;
 class ScannerBridge;
 class Automation;
 class DownloadGuard;
+class DriveWatcher;
 class Page;
 namespace Ui { class Sidebar; class TitleBar; }
 
@@ -27,11 +28,13 @@ public:
 
     void navigate(int page);
     int  currentPage() const { return current_; }
+    Page* page(int id) const { return id >= 0 && id < pages_.size() ? pages_[id] : nullptr; }
 
     // Проверка через помощника. mode — ScanConfig::Mode; paths — для
     // выборочной; filesOnly — только файловый модуль (разовая проверка).
     void startScan(int mode, const QStringList& paths = {}, bool filesOnly = false);
     void cancelScan();
+    void pauseScan(bool paused);
 
     // Мгновенная проверка файлов в процессе окна (без прав администратора).
     void checkFiles(const QStringList& files);
@@ -44,6 +47,11 @@ public:
 
     void toast(const QString& tone, const QString& title, const QString& text = {},
                const QString& action = {}, std::function<void()> onAction = {});
+
+    // Карточка с итогом проверки одного файла: вердикт, размер, подпись, хэш.
+    void showFileReport(const QString& path, bool clean, bool skipped, const QString& skipReason,
+                        const QString& sha256, const QString& signer, qint64 size, const QString& container,
+                        const QString& headline);
 
     void appendLog(const QString& message, const QString& level);
     const QStringList& logLines() const { return log_; }
@@ -59,6 +67,8 @@ signals:
     void logAppended(QString line, QString level);
     void quarantineChanged();
     void signaturesChanged();
+    // Ctrl+F: страница с поиском ставит курсор в своё поле.
+    void searchRequested();
 
 protected:
     void changeEvent(QEvent* e) override;
@@ -75,6 +85,7 @@ private:
     void onScanFinished(bool cancelled);
     void offerUpdate(bool manual);
     void updateSidebarFooter();
+    void installShortcuts();
 
     Ui::TitleBar*   titleBar_ = nullptr;
     Ui::Sidebar*    sidebar_ = nullptr;
@@ -86,6 +97,7 @@ private:
     ScannerBridge*  bridge_ = nullptr;
     Automation*     automation_ = nullptr;
     DownloadGuard*  guard_ = nullptr;
+    DriveWatcher*   drives_ = nullptr;
     bool            demo_ = false;
     bool            quitting_ = false;
     QStringList     log_;

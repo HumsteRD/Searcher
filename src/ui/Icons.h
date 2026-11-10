@@ -15,7 +15,7 @@ enum class Id {
     Check, Close, Info, Download, Refresh, Globe, Cpu, Power, Calendar, Layers, Network,
     ChevronRight, ChevronDown, Plus, Minus, Sun, Moon, Monitor, Lock, Bolt, Drive, Target,
     ArrowUp, Menu, Cube, Database, Search, WinMinimize, WinMaximize, WinRestore, WinClose,
-    Logo,
+    Pause, Logo,
 };
 
 QPixmap pixmap(Id id, int size, const QColor& color);

@@ -13,6 +13,7 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QHBoxLayout>
+#include <QLineEdit>
 #include <QMouseEvent>
 #include <QPainter>
 #include <QProcess>
@@ -310,7 +311,7 @@ void ThreatDetail::show(int row) {
     // Технические подробности.
     layout_->addWidget(makeDivider());
     auto* techToggle = new Button(TR("Technical details"), Button::Variant::Ghost);
-    techToggle->setIconId(Icons::Id::ChevronDown);
+    techToggle->setIconId(Icons::Id::ChevronRight);   // свёрнуто — вправо, раскрыто — вниз
     techToggle->setSize(Button::Size::Small);
     auto* tech = new QWidget();
     auto* tl = new QVBoxLayout(tech);
@@ -349,7 +350,7 @@ void ThreatDetail::show(int row) {
     tech->setVisible(false);
     connect(techToggle, &QPushButton::clicked, this, [tech, techToggle]() {
         tech->setVisible(!tech->isVisible());
-        techToggle->setIconId(tech->isVisible() ? Icons::Id::ChevronRight : Icons::Id::ChevronDown);
+        techToggle->setIconId(tech->isVisible() ? Icons::Id::ChevronDown : Icons::Id::ChevronRight);
     });
     auto* toggleRow = new QHBoxLayout();
     toggleRow->addWidget(techToggle);
@@ -365,6 +366,18 @@ ResultsPage::ResultsPage(MainWindow* window)
     : Page(window, TR("Results"), TR("What the last scan found and what you decided to do with it."))
 {
     setScrollable(false);
+
+    search_ = new QLineEdit();
+    search_->setPlaceholderText(TR("Search findings"));
+    search_->setClearButtonEnabled(true);
+    search_->setFixedWidth(200);
+    actions()->addWidget(search_);
+    connect(search_, &QLineEdit::textChanged, this, &ResultsPage::applyFilter);
+    connect(window, &MainWindow::searchRequested, this, [this]() {
+        if (!isVisible() || !search_->isVisible()) return;
+        search_->setFocus();
+        search_->selectAll();
+    });
 
     filter_ = new Segmented({ TR("All"), TR("Need action"), TR("Handled") });
     actions()->addWidget(filter_);
@@ -394,6 +407,10 @@ ResultsPage::ResultsPage(MainWindow* window)
     list_ = new QVBoxLayout(listInner);
     list_->setContentsMargins(0, 6, 0, 6);
     list_->setSpacing(0);
+    noMatch_ = makeLabel(TR("Nothing matches the filter."), "muted");
+    noMatch_->setContentsMargins(28, 18, 16, 18);
+    noMatch_->setVisible(false);
+    list_->addWidget(noMatch_);
     list_->addStretch(1);
     auto* listScroll = MakeScroll(listInner);
     static_cast<Card*>(listCard_)->body()->addWidget(listScroll);
@@ -409,10 +426,32 @@ ResultsPage::ResultsPage(MainWindow* window)
 
     auto& st = AppState::instance();
     connect(&st, &AppState::itemsReset, this, &ResultsPage::rebuild);
-    connect(&st, &AppState::itemAdded, this, [this](int) { rebuild(); });
+    connect(&st, &AppState::itemAdded, this, [this](int row) {
+        // Обычный случай — находка добавилась в конец: дорисовываем одну
+        // строку. Пересборка всего списка на каждую находку при сотне
+        // угроз превращалась в десять тысяч созданных виджетов.
+        if (row != rows_.size()) { rebuild(); return; }
+        addRow(row);
+        applyFilter();
+        if (selected_ < 0) select(row);
+        updateHeader();
+    });
     connect(&st, &AppState::itemChanged, this, &ResultsPage::updateRow);
     connect(&VirusTotalClient::instance(), &VirusTotalClient::lookupFinished, this,
-            [](int row, QString, int malicious, int total, bool found, bool ok, QString error) {
+            [](int asked, QString sha, int malicious, int total, bool found, bool ok, QString error) {
+                // Ответ приходит через секунды, а список за это время мог
+                // смениться (новая проверка): ищем строку по хэшу, а не
+                // верим номеру, с которым уходил запрос.
+                const auto& items = AppState::instance().items();
+                int row = -1;
+                if (asked >= 0 && asked < items.size() &&
+                    QString::fromStdString(items[asked].threat.sha256) == sha) {
+                    row = asked;
+                } else {
+                    for (int i = 0; i < items.size(); ++i)
+                        if (items[i].vtState == 1 && QString::fromStdString(items[i].threat.sha256) == sha) { row = i; break; }
+                }
+                if (row < 0) return;
                 if (!ok) {
                     AppState::instance().setVirusTotal(row, 5, TR("VirusTotal: the request failed (%1)").arg(error));
                 } else if (!found) {
@@ -449,25 +488,40 @@ void ResultsPage::relayout() {
     splitLayout_->setStretch(1, wide ? 4 : 1);
 }
 
+void ResultsPage::addRow(int i) {
+    const auto& items = AppState::instance().items();
+    auto* row = new ThreatRow(i);
+    connect(row, &ThreatRow::clicked, this, &ResultsPage::select);
+
+    // Сначала самое опасное; среди равных — в порядке обнаружения. По
+    // состоянию не сортируем: строка не должна убегать из-под курсора,
+    // когда над находкой выполнили действие.
+    const int severity = static_cast<int>(items[i].threat.severity);
+    int pos = 0;
+    while (pos < order_.size() &&
+           static_cast<int>(items[order_[pos]->row()].threat.severity) >= severity)
+        ++pos;
+    order_.insert(pos, row);
+    list_->insertWidget(pos, row);
+    rows_ << row;
+}
+
 void ResultsPage::rebuild() {
     for (ThreatRow* r : rows_) {
         r->hide();
+        list_->removeWidget(r);   // сразу: новые строки встают по номеру места
         r->deleteLater();
     }
     rows_.clear();
+    order_.clear();
     const auto& items = AppState::instance().items();
-    for (int i = 0; i < items.size(); ++i) {
-        auto* row = new ThreatRow(i);
-        connect(row, &ThreatRow::clicked, this, &ResultsPage::select);
-        list_->insertWidget(list_->count() - 1, row);
-        rows_ << row;
-    }
+    for (int i = 0; i < items.size(); ++i) addRow(i);
     if (selected_ >= items.size()) selected_ = -1;
     if (selected_ < 0) {
-        // По умолчанию — первая находка, которая ждёт решения.
-        for (int i = 0; i < items.size(); ++i)
-            if (IsOpen(items[i].threat.status)) { selected_ = i; break; }
-        if (selected_ < 0 && !items.isEmpty()) selected_ = 0;
+        // По умолчанию — первая сверху находка, которая ждёт решения.
+        for (ThreatRow* r : order_)
+            if (IsOpen(items[r->row()].threat.status)) { selected_ = r->row(); break; }
+        if (selected_ < 0 && !order_.isEmpty()) selected_ = order_.first()->row();
     }
     applyFilter();
     select(selected_);
@@ -491,14 +545,26 @@ void ResultsPage::select(int row) {
 void ResultsPage::applyFilter() {
     const auto& items = AppState::instance().items();
     const int mode = filter_->current();
+    const QString needle = search_->text().trimmed();
     int visible = 0;
     for (ThreatRow* r : rows_) {
-        const bool open = IsOpen(items[r->row()].threat.status);
-        const bool show = mode == 0 || (mode == 1 && open) || (mode == 2 && !open);
+        if (r->row() >= items.size()) { r->setVisible(false); continue; }
+        const Threat& t = items[r->row()].threat;
+        const bool open = IsOpen(t.status);
+        bool show = mode == 0 || (mode == 1 && open) || (mode == 2 && !open);
+        if (show && !needle.isEmpty()) {
+            // Имя, расположение, семейство и тип — то, что человек помнит
+            // о находке и по чему её ищет.
+            show = QString::fromStdWString(t.name).contains(needle, Qt::CaseInsensitive) ||
+                   QString::fromStdWString(t.source).contains(needle, Qt::CaseInsensitive) ||
+                   Texts::headline(t).contains(needle, Qt::CaseInsensitive) ||
+                   QString::fromStdString(t.sha256).startsWith(needle, Qt::CaseInsensitive);
+        }
         r->setVisible(show);
         visible += show;
     }
     const bool any = !items.isEmpty();
+    noMatch_->setVisible(any && visible == 0);
     split_->setVisible(any);
     empty_->parentWidget()->setVisible(!any);
 }
@@ -510,6 +576,7 @@ void ResultsPage::updateHeader() {
     neutralize_->setVisible(pending > 0);
     neutralize_->setEnabled(!st.scan().running || pending > 0);
     filter_->setVisible(total > 0);
+    search_->setVisible(total > 0);
     if (total == 0) {
         setSubtitle(TR("What the last scan found and what you decided to do with it."));
     } else {

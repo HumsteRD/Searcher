@@ -24,5 +24,5 @@ private:
     QWidget*     listCard_;
     QWidget*     emptyCard_;
     Ui::Button*  clear_;
-    QSet<int>    expanded_;
+    QSet<qint64> expanded_;   // время проверки в миллисекундах
 };

@@ -128,6 +128,7 @@ private:
     QVBoxLayout* content_;
     QHBoxLayout* buttons_;
     QHBoxLayout* header_;
+    QPointer<Button> default_;
     int maxWidth_ = 520;
 };
 

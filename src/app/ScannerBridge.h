@@ -26,12 +26,15 @@ public:
     // причина уходит в error.
     bool startScan(const QJsonObject& args, QString* error = nullptr);
     void cancelScan();
+    void setScanPaused(bool paused);
 
     // action: 0 — карантин, 1 — удаление, 2 — пропустить.
     void applyAction(int index, int action);
     void reportThreat(const QJsonObject& threat);
 
     using DoneCallback = std::function<void(bool done, const QString& error)>;
+    // При успехе вторым аргументом приходит путь, куда файл восстановлен:
+    // он отличается от исходного, если то место уже занято.
     void restoreFromQuarantine(const QString& id, DoneCallback callback);
     void deleteFromQuarantine(const QString& id, DoneCallback callback);
     void quarantineFile(const QString& path, const QString& name, const QString& severity,
@@ -50,6 +53,7 @@ signals:
     void threatReported(int index, QJsonObject threat);
     void actionApplied(int index, QString status, QString message, bool success);
     void progressChanged(int percent, QString stage);
+    void pausedChanged(bool paused);
     void scanDetail(QString currentItem, qint64 objectsScanned, int elapsedMs, int etaMs);
     void stateChanged(int state, bool cancelled);
     void statsChanged(int totalThreats, int criticalThreats);
@@ -65,4 +69,5 @@ private:
 
     Ipc::HelperClient* helper_ = nullptr;
     bool lastCancelled_ = false;
+    bool lastPaused_ = false;
 };

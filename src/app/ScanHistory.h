@@ -39,8 +39,16 @@ public:
     // Подменить записи в памяти без записи на диск (снимки экрана).
     void setTransient(const QVector<ScanRecord>& records);
 
-    // Отчёт по одной проверке — читаемый текст на текущем языке.
+    // Над находкой выполнили действие: записать новое состояние в ту
+    // проверку, где она найдена. Иначе история навсегда показывала бы
+    // «ждёт решения» у давно обезвреженного файла.
+    void syncStatus(const Threat& threat);
+
+    // Отчёт по одной проверке на текущем языке: читаемый текст,
+    // страница HTML для печати и пересылки, JSON для разбора программой.
     QString exportText(const ScanRecord& r) const;
+    QString exportHtml(const ScanRecord& r) const;
+    QByteArray exportJson(const ScanRecord& r) const;
 
 signals:
     void changed();

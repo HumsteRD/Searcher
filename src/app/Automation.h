@@ -38,7 +38,15 @@ public:
     void retranslate();
 
     // Уведомление в области уведомлений Windows (если трей включён).
+    // Некритичное не показывается, пока включён режим «не беспокоить»
+    // и на весь экран идёт игра, фильм или презентация.
     void notify(const QString& title, const QString& text, bool warning);
+
+    // Пользователь занят полноэкранным приложением: так считает сама
+    // Windows, когда решает, показывать ли свои уведомления.
+    static bool userIsBusy();
+    // Плановая проверка отложена из-за этого (для подписи на главной).
+    bool schedulePostponed() const { return postponed_; }
 
 signals:
     void scheduledScanDue();
@@ -56,4 +64,5 @@ private:
     QTimer*          timer_ = nullptr;
     QSystemTrayIcon* tray_ = nullptr;
     QMenu*           menu_ = nullptr;
+    bool             postponed_ = false;
 };

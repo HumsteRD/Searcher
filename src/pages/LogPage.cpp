@@ -7,6 +7,7 @@
 #include <QClipboard>
 #include <QFile>
 #include <QFileDialog>
+#include <QLineEdit>
 #include <QPlainTextEdit>
 #include <QScrollBar>
 #include <QStandardPaths>
@@ -20,6 +21,11 @@ LogPage::LogPage(MainWindow* window)
                                  "Useful if something went wrong."))
 {
     setScrollable(false);
+    search_ = new QLineEdit();
+    search_->setPlaceholderText(TR("Search the log"));
+    search_->setClearButtonEnabled(true);
+    search_->setFixedWidth(220);
+    actions()->addWidget(search_);
     filter_ = new Segmented({ TR("All"), TR("Warnings"), TR("Errors") });
     actions()->addWidget(filter_);
     auto* copy = new Button(TR("Copy"), Button::Variant::Secondary);
@@ -40,6 +46,7 @@ LogPage::LogPage(MainWindow* window)
     body()->addWidget(card, 1);
 
     connect(filter_, &Segmented::currentChanged, this, &LogPage::rebuild);
+    connect(search_, &QLineEdit::textChanged, this, &LogPage::rebuild);
     connect(copy, &QPushButton::clicked, this, [this]() { QApplication::clipboard()->setText(view_->toPlainText()); });
     connect(save, &QPushButton::clicked, this, [this]() {
         const QString path = QFileDialog::getSaveFileName(this, TR("Save the log"),
@@ -47,36 +54,52 @@ LogPage::LogPage(MainWindow* window)
             TR("Text files (*.txt)"));
         if (path.isEmpty()) return;
         QFile f(path);
-        if (f.open(QIODevice::WriteOnly | QIODevice::Text)) {
-            QTextStream out(&f);
-            out.setEncoding(QStringConverter::Utf8);
-            for (const QString& l : this->window()->logLines()) out << l << "\n";
+        if (!f.open(QIODevice::WriteOnly | QIODevice::Text)) {
+            this->window()->toast("CRIT", TR("Could not save the log"), f.errorString());
+            return;
         }
+        QTextStream out(&f);
+        out.setEncoding(QStringConverter::Utf8);
+        out.setGenerateByteOrderMark(true);
+        // В файл идёт то, что на экране: если включён фильтр или поиск,
+        // сохраняют обычно именно найденное.
+        out << view_->toPlainText() << "\n";
     });
     connect(window, &MainWindow::logAppended, this, &LogPage::append);
+    connect(window, &MainWindow::searchRequested, this, [this]() {
+        if (!isVisible()) return;
+        search_->setFocus();
+        search_->selectAll();
+    });
     rebuild();
 }
 
 void LogPage::onShown() {}
 
-bool LogPage::passes(const QString& level) const {
+bool LogPage::passes(const QString& line, const QString& level) const {
     switch (filter_->current()) {
-    case 1:  return level == "WRN" || level == "ERR";
-    case 2:  return level == "ERR";
-    default: return true;
+    case 1:  if (level != "WRN" && level != "ERR") return false; break;
+    case 2:  if (level != "ERR") return false; break;
+    default: break;
     }
+    const QString needle = search_->text().trimmed();
+    return needle.isEmpty() || line.contains(needle, Qt::CaseInsensitive);
 }
 
 void LogPage::rebuild() {
-    view_->clear();
+    // Одной вставкой: добавление пяти тысяч строк по одной заметно
+    // подвешивало страницу на каждой букве поиска.
+    QStringList shown;
     for (const QString& line : window()->logLines()) {
-        const QString level = line.mid(9, 3);
-        if (passes(level)) view_->appendPlainText(line);
+        if (passes(line, line.mid(9, 3))) shown << line;
     }
+    view_->setPlainText(shown.join('\n'));
+    QScrollBar* sb = view_->verticalScrollBar();
+    sb->setValue(sb->maximum());
 }
 
 void LogPage::append(const QString& line, const QString& level) {
-    if (!passes(level)) return;
+    if (!passes(line, level)) return;
     QScrollBar* sb = view_->verticalScrollBar();
     const bool atEnd = sb->value() >= sb->maximum() - 4;
     view_->appendPlainText(line);

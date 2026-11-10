@@ -5,6 +5,7 @@
 #include "../app/ScanHistory.h"
 #include "../app/Texts.h"
 
+#include <QDesktopServices>
 #include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
@@ -12,6 +13,7 @@
 #include <QLocale>
 #include <QStandardPaths>
 #include <QTextStream>
+#include <QUrl>
 #include <QVBoxLayout>
 
 using namespace Ui;
@@ -103,17 +105,20 @@ QWidget* HistoryPage::makeRow(int index) {
     else             { resultText = TR("Clean"); tone = "OK"; }
     row->addWidget(new Pill(resultText, tone), 0, Qt::AlignVCenter);
 
-    auto* more = new IconButton(expanded_.contains(index) ? Icons::Id::ChevronDown : Icons::Id::ChevronRight,
+    // Развёрнутость помним по времени проверки, а не по номеру строки:
+    // новая проверка сдвигает номера, и раскрывалась бы чужая запись.
+    const qint64 key = r.when.toMSecsSinceEpoch();
+    auto* more = new IconButton(expanded_.contains(key) ? Icons::Id::ChevronDown : Icons::Id::ChevronRight,
                                 TR("Details"), nullptr, 32);
     row->addWidget(more, 0, Qt::AlignVCenter);
     col->addLayout(row);
-    connect(more, &QAbstractButton::clicked, this, [this, index]() {
-        if (expanded_.contains(index)) expanded_.remove(index);
-        else expanded_.insert(index);
+    connect(more, &QAbstractButton::clicked, this, [this, key]() {
+        if (expanded_.contains(key)) expanded_.remove(key);
+        else expanded_.insert(key);
         refresh();
     });
 
-    if (expanded_.contains(index)) {
+    if (expanded_.contains(key)) {
         auto* details = new QVBoxLayout();
         details->setContentsMargins(50, 0, 0, 0);
         details->setSpacing(8);
@@ -142,21 +147,42 @@ QWidget* HistoryPage::makeRow(int index) {
         buttons->addWidget(exportBtn);
         connect(exportBtn, &QPushButton::clicked, this, [this, index]() {
             const ScanRecord& rec = ScanHistory::instance().records()[index];
+            // Копия: пока открыт диалог, список истории может перестроиться.
+            const ScanRecord copy = rec;
             const QString suggested = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) +
-                                      "/ThreatScanner-" + rec.when.toString("yyyy-MM-dd-HHmm") + ".txt";
-            const QString path = QFileDialog::getSaveFileName(this, TR("Save report"), suggested,
-                                                              TR("Text files (*.txt)"));
+                                      "/ThreatScanner-" + copy.when.toString("yyyy-MM-dd-HHmm") + ".html";
+            // Формат — по расширению: страница для чтения и пересылки,
+            // текст — в письмо или чат, JSON — для разбора программой.
+            QString chosen;
+            const QString path = QFileDialog::getSaveFileName(
+                this, TR("Save report"), suggested,
+                TR("Web page (*.html)") + ";;" + TR("Text files (*.txt)") + ";;" + TR("JSON data (*.json)"), &chosen);
             if (path.isEmpty()) return;
+            const QString ext = QFileInfo(path).suffix().toLower();
             QFile f(path);
-            if (!f.open(QIODevice::WriteOnly | QIODevice::Text)) {
+            if (!f.open(QIODevice::WriteOnly)) {
                 window()->toast("CRIT", TR("Could not save the report"), f.errorString());
                 return;
             }
-            QTextStream out(&f);
-            out.setEncoding(QStringConverter::Utf8);
-            out.setGenerateByteOrderMark(true);
-            out << ScanHistory::instance().exportText(rec);
-            window()->toast("OK", TR("Report saved"), QFileInfo(path).fileName());
+            QByteArray data;
+            if (ext == "json") {
+                data = ScanHistory::instance().exportJson(copy);
+            } else if (ext == "txt") {
+                // С меткой порядка байтов: без неё Блокнот старых Windows
+                // читает кириллицу в кодировке системы.
+                data = QByteArray("\xEF\xBB\xBF") +
+                       ScanHistory::instance().exportText(copy).replace("\n", "\r\n").toUtf8();
+            } else {
+                data = ScanHistory::instance().exportHtml(copy).toUtf8();
+            }
+            if (f.write(data) != data.size()) {
+                window()->toast("CRIT", TR("Could not save the report"), f.errorString());
+                return;
+            }
+            f.close();
+            const QString saved = path;
+            window()->toast("OK", TR("Report saved"), QFileInfo(path).fileName(), TR("Open"),
+                            [saved]() { QDesktopServices::openUrl(QUrl::fromLocalFile(saved)); });
         });
         if (!r.reportPath.isEmpty() && QFileInfo::exists(r.reportPath)) {
             auto* behavior = new Button(TR("Open behavior report"), Button::Variant::Secondary);

@@ -5,6 +5,7 @@
 
 #include <QWidget>
 
+class QBoxLayout;
 class QHBoxLayout;
 class QScrollArea;
 class QVBoxLayout;
@@ -27,15 +28,30 @@ public:
     // Страница стала видимой — обновить то, что могло устареть.
     virtual void onShown() {}
 
+    // Прокрутить содержимое на экран вниз. false — ниже ничего нет. Нужно
+    // снимкам экрана: длинные страницы (настройки, справка) иначе видны
+    // только до первого сгиба.
+    bool scrollPageDown();
+    void scrollToTop();
+
 protected:
     MainWindow* window() const { return window_; }
     // Отключить прокрутку: страница сама управляет высотой (таблицы).
     void setScrollable(bool scrollable);
 
+    void resizeEvent(QResizeEvent* e) override;
+    void showEvent(QShowEvent* e) override;
+    bool eventFilter(QObject* o, QEvent* e) override;
+
 private:
+    // Действия рядом с заголовком или под ним — по ширине окна.
+    void relayoutHeader();
+
     MainWindow*  window_;
     QLabel*      subtitle_;
     QVBoxLayout* body_;
+    QBoxLayout*  header_ = nullptr;
+    QWidget*     actionsBox_ = nullptr;
     QHBoxLayout* actions_;
     QScrollArea* scroll_ = nullptr;
     QWidget*     column_ = nullptr;

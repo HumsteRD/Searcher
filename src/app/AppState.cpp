@@ -23,16 +23,62 @@ int AppState::criticalCount() const {
     return n;
 }
 
-void AppState::beginScan(int mode, bool singleTarget, const QString& target) {
+int AppState::foundInScan() const {
+    int n = 0;
+    for (const Item& i : items_)
+        if (!i.carried) ++n;
+    return n;
+}
+
+QString AppState::stageName(int module) {
+    switch (module) {
+    case 0:  return QStringLiteral("Files");
+    case 1:  return QStringLiteral("Processes");
+    case 2:  return QStringLiteral("Autoruns");
+    case 3:  return QStringLiteral("Tasks");
+    case 4:  return QStringLiteral("Services");
+    case 5:  return QStringLiteral("Network");
+    default: return {};
+    }
+}
+
+int AppState::currentStageIndex() const {
+    if (scan_.stage == QLatin1String("Done")) return scan_.stages.size();
+    for (int i = 0; i < scan_.stages.size(); ++i)
+        if (stageName(scan_.stages[i]) == scan_.stage) return i;
+    return -1;
+}
+
+void AppState::beginScan(int mode, bool singleTarget, const QString& target, const QVector<int>& stages) {
     scan_ = Scan{};
     scan_.running = true;
     scan_.mode = mode;
     scan_.singleTarget = singleTarget;
     scan_.target = target;
+    scan_.stages = stages;
     scan_.percent = -1;
     scan_.startedAt = QDateTime::currentDateTime();
-    items_.clear();
+
+    // Находки прошлой проверки уходят, а найденное вне проверок и ещё не
+    // решённое (опасная загрузка, перетащенный файл) остаётся: начало новой
+    // проверки — не повод молча забыть про файл, который ждёт решения.
+    QVector<Item> kept;
+    for (const Item& it : items_) {
+        const bool open = it.threat.status == ThreatStatus::Pending || it.threat.status == ThreatStatus::Failed;
+        if (it.index < 0 && open && !it.busy) {
+            kept.push_back(it);
+            kept.back().carried = true;
+        }
+    }
+    items_ = kept;
     emit itemsReset();
+    emit scanChanged();
+}
+
+void AppState::setPaused(bool paused) {
+    if (!scan_.running || scan_.paused == paused) return;
+    scan_.paused = paused;
+    if (paused) scan_.etaMs = -1;
     emit scanChanged();
 }
 
@@ -57,11 +103,15 @@ void AppState::setDetail(const QString& item, qint64 objects, int elapsedMs, int
 void AppState::finishScan(bool cancelled) {
     if (!scan_.running) return;
     scan_.running = false;
+    scan_.paused = false;
     scan_.finished = true;
     scan_.cancelled = cancelled;
     if (!cancelled) scan_.percent = 100;
     scan_.finishedAt = QDateTime::currentDateTime();
-    scan_.elapsedMs = static_cast<int>(scan_.startedAt.msecsTo(scan_.finishedAt));
+    // Длительность считает помощник — без времени на паузе. Часы окна
+    // годятся, только если от помощника ничего не пришло (не поднялся).
+    if (scan_.elapsedMs <= 0)
+        scan_.elapsedMs = static_cast<int>(scan_.startedAt.msecsTo(scan_.finishedAt));
     scan_.currentItem.clear();
     emit scanChanged();
 }
@@ -81,6 +131,11 @@ void AppState::addLocalThreat(const Threat& threat) {
     it.threat = threat;
     items_.push_back(it);
     emit itemAdded(items_.size() - 1);
+}
+
+void AppState::clearItems() {
+    items_.clear();
+    emit itemsReset();
 }
 
 void AppState::setBusy(int row, bool busy) {

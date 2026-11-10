@@ -290,6 +290,9 @@ QList<Reason> reasons(const Threat& t) {
                 ? TR("A Python program packed with PyInstaller: its code was unpacked and checked")
                 : TR("The contents of the archive were unpacked and checked");
             out << r;
+        } else if (code == "origin") {
+            // Адрес из «метки из интернета», которую ставит браузер.
+            out << Reason{ TR("Downloaded from the internet"), Arg(p, 1) };
         } else if (code == "signed") {
             Reason r;
             r.technical = true;

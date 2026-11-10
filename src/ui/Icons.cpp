@@ -114,6 +114,8 @@ const char* Body(Id id) {
         return R"(<rect x="7" y="9" width="8" height="8" rx="1"/><path d="M9.5 9V7.5a.5.5 0 0 1 .5-.5h6.5a.5.5 0 0 1 .5.5V14a.5.5 0 0 1-.5.5H15"/>)";
     case Id::WinClose:
         return R"(<path d="M7.5 7.5l9 9"/><path d="M16.5 7.5l-9 9"/>)";
+    case Id::Pause:
+        return R"(<path d="M8.5 5.5v13"/><path d="M15.5 5.5v13"/>)";
     case Id::Logo:
         return "";
     }

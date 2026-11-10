@@ -2,6 +2,7 @@
 
 #include "Page.h"
 
+class QLineEdit;
 class QPlainTextEdit;
 namespace Ui { class Segmented; }
 
@@ -15,8 +16,9 @@ public:
 private:
     void rebuild();
     void append(const QString& line, const QString& level);
-    bool passes(const QString& level) const;
+    bool passes(const QString& line, const QString& level) const;
 
     QPlainTextEdit* view_;
+    QLineEdit*      search_;
     Ui::Segmented*  filter_;
 };

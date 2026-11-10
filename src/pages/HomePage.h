@@ -10,9 +10,23 @@ class HomePage : public Page {
 public:
     explicit HomePage(MainWindow* window);
     void onShown() override;
+    // Всё целиком: и состояние проверки, и то, что читается с диска и из
+    // настроек (карантин, базы, строки «Защита»).
     void refresh();
 
+protected:
+    void showEvent(QShowEvent* e) override;
+
 private:
+    bool     filled_ = false;
+    // Только то, что меняется по ходу проверки. Зовётся на каждое событие
+    // прогресса — десятки раз в секунду, поэтому ничего не читает с диска.
+    void refreshScan();
+
+    int      quarantineCount_ = 0;
+    quint64  hashCount_ = 0;
+    quint32  databaseStamp_ = 0;
+
     Ui::IconLabel*   heroIcon_;
     QLabel*          heroTitle_;
     QLabel*          heroText_;

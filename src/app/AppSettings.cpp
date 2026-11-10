@@ -5,6 +5,9 @@
 #include <QJsonArray>
 #include <QSettings>
 
+#include <algorithm>
+#include <thread>
+
 namespace {
 
 // Настройки второй версии лежат в своей ветке: у первой другой порядок
@@ -48,6 +51,18 @@ bool AppSettings::unpackArchives() const { return Read("scan/unpack", true).toBo
 void AppSettings::setUnpackArchives(bool on) { Write("scan/unpack", on); }
 bool AppSettings::autoQuarantine() const { return Read("scan/autoQuarantine", false).toBool(); }
 void AppSettings::setAutoQuarantine(bool on) { Write("scan/autoQuarantine", on); }
+
+int  AppSettings::scanIntensity() const { return std::clamp(Read("scan/intensity", 1).toInt(), 0, 2); }
+void AppSettings::setScanIntensity(int level) { Write("scan/intensity", std::clamp(level, 0, 2)); }
+
+int AppSettings::threadsFor(int intensity) {
+    const int cores = std::max(1, static_cast<int>(std::thread::hardware_concurrency()));
+    switch (intensity) {
+    case 0:  return std::clamp(cores / 4, 1, 2);    // компьютером можно пользоваться как обычно
+    case 2:  return std::clamp(cores, 2, 16);       // все ядра: быстрее, но заметно
+    default: return 0;                              // ядро выберет само: ядра − 1, не больше 8
+    }
+}
 
 QStringList AppSettings::excludedPaths() const { return Read("scan/excluded", QStringList()).toStringList(); }
 void AppSettings::setExcludedPaths(const QStringList& p) { Write("scan/excluded", p); }
@@ -93,6 +108,7 @@ QJsonObject AppSettings::scanArgs(int modeOverride, const QStringList& overrideP
     a["extendedRules"]  = extendedRules();
     a["reportPua"]      = reportPua();
     a["unpackArchives"] = unpackArchives();
+    a["threads"]        = threadsFor(scanIntensity());
     a["excludedPaths"]  = QJsonArray::fromStringList(excludedPaths());
     a["allowedHashes"]  = QJsonArray::fromStringList(allowedHashes());
     return a;
@@ -100,6 +116,10 @@ QJsonObject AppSettings::scanArgs(int modeOverride, const QStringList& overrideP
 
 bool AppSettings::downloadGuard() const { return Read("protect/downloadGuard", true).toBool(); }
 void AppSettings::setDownloadGuard(bool on) { Write("protect/downloadGuard", on); }
+bool AppSettings::driveGuard() const { return Read("protect/driveGuard", true).toBool(); }
+void AppSettings::setDriveGuard(bool on) { Write("protect/driveGuard", on); }
+bool AppSettings::quietWhenFullscreen() const { return Read("protect/quietFullscreen", true).toBool(); }
+void AppSettings::setQuietWhenFullscreen(bool on) { Write("protect/quietFullscreen", on); }
 
 bool AppSettings::checkUpdatesOnStart() const { return Read("update/checkOnStart", true).toBool(); }
 void AppSettings::setCheckUpdatesOnStart(bool on) { Write("update/checkOnStart", on); }

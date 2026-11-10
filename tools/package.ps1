@@ -7,7 +7,19 @@ $ErrorActionPreference = 'Stop'
 $root  = Split-Path -Parent $PSScriptRoot
 $build = Join-Path $root 'build/Release'
 $dist  = Join-Path $root 'dist/ThreatScanner'
-$cmake = 'C:/Program Files/Microsoft Visual Studio/18/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe'
+
+# CMake: из PATH, иначе тот, что идёт с Visual Studio или Build Tools
+# (путь зависит от версии и редакции — спрашиваем у vswhere).
+$cmake = (Get-Command cmake -ErrorAction SilentlyContinue).Source
+if (-not $cmake) {
+    $vswhere = "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe"
+    if (Test-Path $vswhere) {
+        $vs = & $vswhere -latest -products * -property installationPath
+        $candidate = Join-Path $vs 'Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe'
+        if (Test-Path $candidate) { $cmake = $candidate }
+    }
+}
+if (-not $cmake) { throw 'CMake is not found: install Visual Studio (or Build Tools) with the C++ workload' }
 
 $iscc = @("$env:LOCALAPPDATA/Programs/Inno Setup 6/ISCC.exe",
           "${env:ProgramFiles(x86)}/Inno Setup 6/ISCC.exe") |

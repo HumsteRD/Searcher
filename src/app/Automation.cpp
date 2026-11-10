@@ -1,7 +1,11 @@
 #include "Automation.h"
+#include "AppSettings.h"
 #include "Lang.h"
 
 #include "../ui/Icons.h"
+
+#include <Windows.h>
+#include <shellapi.h>
 
 #include <QApplication>
 #include <QDir>
@@ -84,10 +88,23 @@ QDateTime Automation::nextRun() {
     return QDateTime(last.date().addDays(days), QTime(scheduleHour(), 0));
 }
 
+bool Automation::userIsBusy() {
+    QUERY_USER_NOTIFICATION_STATE state = QUNS_ACCEPTS_NOTIFICATIONS;
+    if (FAILED(SHQueryUserNotificationState(&state))) return false;
+    return state == QUNS_BUSY || state == QUNS_RUNNING_D3D_FULL_SCREEN || state == QUNS_PRESENTATION_MODE;
+}
+
 void Automation::tick() {
-    if (schedule() == Schedule::Off) return;
+    if (schedule() == Schedule::Off) { postponed_ = false; return; }
     const QDateTime next = nextRun();
-    if (!next.isValid() || QDateTime::currentDateTime() < next) return;
+    if (!next.isValid() || QDateTime::currentDateTime() < next) { postponed_ = false; return; }
+    // Проверка посреди игры — это просадка кадров и запрос прав поверх
+    // экрана. Время не сбрасываем: она начнётся, как только экран освободится.
+    if (AppSettings::Get().quietWhenFullscreen() && userIsBusy()) {
+        postponed_ = true;
+        return;
+    }
+    postponed_ = false;
     setLastRun(QDateTime::currentDateTime());
     emit scheduledScanDue();
 }
@@ -128,5 +145,6 @@ void Automation::retranslate() {
 
 void Automation::notify(const QString& title, const QString& text, bool warning) {
     if (!tray_) return;
+    if (!warning && AppSettings::Get().quietWhenFullscreen() && userIsBusy()) return;
     tray_->showMessage(title, text, warning ? QSystemTrayIcon::Warning : QSystemTrayIcon::Information, 8000);
 }

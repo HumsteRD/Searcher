@@ -2,6 +2,7 @@
 
 #include "../app/AppSettings.h"
 #include "../app/AppState.h"
+#include "../app/DriveWatcher.h"
 #include "../app/Lang.h"
 #include "../app/MainWindow.h"
 #include "../app/Texts.h"
@@ -12,7 +13,9 @@
 #include <QFileDialog>
 #include <QHBoxLayout>
 #include <QListWidget>
+#include <QMenu>
 #include <QMouseEvent>
+#include <QPainter>
 #include <QStackedWidget>
 #include <QVBoxLayout>
 
@@ -57,6 +60,82 @@ void ChoiceCard::mouseReleaseEvent(QMouseEvent* e) {
 
 void ChoiceCard::enterEvent(QEnterEvent*) { setStyleProp(this, "hover", true); }
 void ChoiceCard::leaveEvent(QEvent*) { setStyleProp(this, "hover", false); }
+
+// ─── StageList ───
+
+StageList::StageList(QWidget* parent) : QWidget(parent) {
+    setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    connect(&Theme::instance(), &Theme::changed, this, qOverload<>(&QWidget::update));
+}
+
+void StageList::set(const QStringList& labels, int current, bool paused) {
+    if (labels == labels_ && current == current_ && paused == paused_) return;
+    const bool resized = labels.size() != labels_.size();
+    labels_ = labels;
+    current_ = current;
+    paused_ = paused;
+    if (resized) updateGeometry();
+    update();
+}
+
+QSize StageList::sizeHint() const {
+    return { 320, static_cast<int>(labels_.size()) * 34 };
+}
+
+void StageList::paintEvent(QPaintEvent*) {
+    QPainter p(this);
+    p.setRenderHint(QPainter::Antialiasing);
+    const Palette& c = pal();
+    const int rowH = 34;
+    const QFont normal = Font::make(Font::Body);
+    const QFont strong = Font::make(Font::Body, QFont::DemiBold);
+    const QFont small = Font::make(Font::Caption);
+
+    for (int i = 0; i < labels_.size(); ++i) {
+        const int y = i * rowH;
+        const QRectF dot(3, y + (rowH - 18) / 2.0, 18, 18);
+        const bool done = i < current_;
+        const bool active = i == current_;
+
+        // Линия, соединяющая отметки: этапы идут один за другим.
+        if (i + 1 < labels_.size()) {
+            p.setPen(QPen(done ? c.ok : c.border, 1.5));
+            p.drawLine(QPointF(dot.center().x(), dot.bottom() + 2), QPointF(dot.center().x(), y + rowH + (rowH - 18) / 2.0 - 2));
+        }
+
+        if (done) {
+            p.setPen(Qt::NoPen);
+            p.setBrush(c.okSoft);
+            p.drawEllipse(dot);
+            p.drawPixmap(dot.toRect().adjusted(3, 3, -3, -3), Icons::pixmap(Icons::Id::Check, 12, c.okText));
+        } else if (active) {
+            const QColor tone = paused_ ? c.warn : c.accent;
+            p.setPen(QPen(tone, 1.75));
+            p.setBrush(Qt::NoBrush);
+            p.drawEllipse(dot.adjusted(1, 1, -1, -1));
+            p.setPen(Qt::NoPen);
+            p.setBrush(tone);
+            p.drawEllipse(dot.adjusted(5.5, 5.5, -5.5, -5.5));
+        } else {
+            p.setPen(QPen(c.borderStrong, 1.5));
+            p.setBrush(Qt::NoBrush);
+            p.drawEllipse(dot.adjusted(1, 1, -1, -1));
+        }
+
+        const QString note = done ? TR("done") : active ? (paused_ ? TR("on pause") : TR("in progress")) : QString();
+        const int noteW = note.isEmpty() ? 0 : QFontMetrics(small).horizontalAdvance(note) + 12;
+        const QRect textRect(34, y, width() - 34 - noteW, rowH);
+        p.setFont(active ? strong : normal);
+        p.setPen(active ? c.text : done ? c.text2 : c.text3);
+        p.drawText(textRect, Qt::AlignLeft | Qt::AlignVCenter,
+                   QFontMetrics(p.font()).elidedText(labels_[i], Qt::ElideRight, textRect.width()));
+        if (!note.isEmpty()) {
+            p.setFont(small);
+            p.setPen(active ? (paused_ ? c.warnText : c.accentText) : c.text3);
+            p.drawText(QRect(width() - noteW, y, noteW, rowH), Qt::AlignRight | Qt::AlignVCenter, note);
+        }
+    }
+}
 
 // ─── ScanPage ───
 
@@ -109,13 +188,33 @@ ScanPage::ScanPage(MainWindow* window)
     addFolder->setIconId(Icons::Id::Folder);
     auto* addFile = new Button(TR("Add files…"), Button::Variant::Secondary);
     addFile->setIconId(Icons::Id::File);
+    auto* addDrive = new Button(TR("Add drive…"), Button::Variant::Secondary);
+    addDrive->setIconId(Icons::Id::Drive);
     auto* remove = new Button(TR("Remove"), Button::Variant::Ghost);
     pathButtons->addWidget(addFolder);
     pathButtons->addWidget(addFile);
+    pathButtons->addWidget(addDrive);
     pathButtons->addWidget(remove);
     pathButtons->addStretch(1);
     cb->addLayout(pathButtons);
     s->addWidget(customBox_);
+    // Диски — меню со списком того, что подключено сейчас: флешку
+    // проще выбрать по имени, чем искать её в диалоге выбора папки.
+    connect(addDrive, &QPushButton::clicked, this, [this, addDrive]() {
+        QMenu menu(this);
+        for (const DriveWatcher::Drive& d : DriveWatcher::drives()) {
+            QString text = d.title();
+            if (d.totalBytes > 0)
+                text += QStringLiteral("  ·  ") + TR("%1 free of %2").arg(formatBytes(d.freeBytes), formatBytes(d.totalBytes));
+            const QString root = d.root;
+            menu.addAction(text, this, [this, root]() {
+                paths_->addItem(QDir::toNativeSeparators(root));
+                savePaths();
+            });
+        }
+        if (menu.isEmpty()) menu.addAction(TR("No drives found"))->setEnabled(false);
+        menu.exec(addDrive->mapToGlobal(QPoint(0, addDrive->height() + 4)));
+    });
     for (const QString& p : AppSettings::Get().customPaths()) paths_->addItem(QDir::toNativeSeparators(p));
     savePaths();
     connect(addFolder, &QPushButton::clicked, this, [this]() {
@@ -203,8 +302,8 @@ ScanPage::ScanPage(MainWindow* window)
     stage_ = makeLabel(QString(), "hero");
     stage_->setWordWrap(true);
     titles->addWidget(stage_);
-    titles->addWidget(makeLabel(TR("You can keep working: the scan runs in the background with a lower priority."),
-                                "muted"));
+    hint_ = makeLabel(QString(), "muted");
+    titles->addWidget(hint_);
     top->addLayout(titles, 1);
     percent_ = makeLabel(QString(), "metric");
     top->addWidget(percent_, 0, Qt::AlignTop);
@@ -235,16 +334,31 @@ ScanPage::ScanPage(MainWindow* window)
     found_ = makeLabel(QString(), "body");
     foot->addWidget(found_, 1);
     showFound_ = new Button(TR("Show findings"), Button::Variant::Secondary);
+    pause_ = new Button(TR("Pause"), Button::Variant::Secondary);
+    pause_->setIconId(Icons::Id::Pause);
+    pause_->setToolTip(TR("Free the disk and processor for a while. The scan continues from the same place."));
     cancel_ = new Button(TR("Stop scan"), Button::Variant::Secondary);
     cancel_->setIconId(Icons::Id::Stop);
     foot->addWidget(showFound_);
+    foot->addWidget(pause_);
     foot->addWidget(cancel_);
     prog->body()->addSpacing(4);
     prog->body()->addLayout(foot);
     r->addWidget(prog);
+
+    auto* stages = new Card(nullptr, 22);
+    stages->body()->setSpacing(10);
+    stages->body()->addWidget(makeLabel(TR("Scan stages"), "subheading"));
+    stageList_ = new StageList();
+    stages->body()->addWidget(stageList_);
+    stagesCard_ = stages;
+    r->addWidget(stages);
     r->addStretch(1);
     connect(showFound_, &QPushButton::clicked, this, [window]() { window->navigate(MainWindow::Results); });
     connect(cancel_, &QPushButton::clicked, this, [window]() { window->cancelScan(); });
+    connect(pause_, &QPushButton::clicked, this, [window]() {
+        window->pauseScan(!AppState::instance().scan().paused);
+    });
     views_->addWidget(running);
 
     // ─── Итог ───
@@ -278,7 +392,7 @@ ScanPage::ScanPage(MainWindow* window)
     d->addStretch(1);
     connect(again, &QPushButton::clicked, this, [this]() { showResult_ = false; refresh(); });
     connect(resultPrimary_, &QPushButton::clicked, this, [window]() {
-        if (AppState::instance().items().isEmpty()) window->navigate(MainWindow::History);
+        if (AppState::instance().foundInScan() == 0) window->navigate(MainWindow::History);
         else window->navigate(MainWindow::Results);
     });
     views_->addWidget(done);
@@ -323,25 +437,45 @@ void ScanPage::savePaths() {
 void ScanPage::refresh() {
     const AppState& st = AppState::instance();
     const AppState::Scan& scan = st.scan();
-    const int found = st.items().size();
+    const int found = st.foundInScan();
 
     if (scan.running) {
         views_->setCurrentIndex(1);
         modeLabel_->setText(scan.singleTarget ? TR("Checking %1").arg(QDir::toNativeSeparators(scan.target))
                                               : Texts::modeLabel(scan.mode));
-        stage_->setText(scan.stage.isEmpty() ? TR("Starting the helper…") : Texts::stageLabel(scan.stage));
+        stage_->setText(scan.paused ? TR("Paused")
+                        : scan.stage.isEmpty() ? TR("Starting the helper…") : Texts::stageLabel(scan.stage));
         if (scan.percent >= 0) {
             percent_->setText(QString::number(scan.percent) + "%");
             progress_->setValue(scan.percent / 100.0);
         } else {
             percent_->setText(QString());
-            progress_->setValue(-1);
+            // На паузе бегущая полоса обманывала бы: ничего не происходит.
+            progress_->setValue(scan.paused ? 0.0 : -1);
         }
         checked_->setText(TR("%1 %2").arg(formatCount(scan.objects))
                               .arg(TRN(scan.objects, "object", "objects", "объект", "объекта", "объектов")));
         elapsed_->setText(formatDuration(scan.elapsedMs));
-        eta_->setText(scan.etaMs >= 0 ? TR("about %1").arg(formatDuration(scan.etaMs))
-                                      : (scan.percent < 0 ? TR("counting files…") : TR("estimating…")));
+        eta_->setText(scan.paused ? TR("on pause")
+                      : scan.etaMs >= 0 ? TR("about %1").arg(formatDuration(scan.etaMs))
+                                        : (scan.percent < 0 ? TR("counting files…") : TR("estimating…")));
+        hint_->setText(scan.paused
+            ? TR("Nothing is being read from the disk. Press Continue when it is convenient.")
+            : TR("You can keep working: the scan runs in the background with a lower priority."));
+        pause_->setText(scan.paused ? TR("Continue") : TR("Pause"));
+        pause_->setIconId(scan.paused ? Icons::Id::Play : Icons::Id::Pause);
+        // Пока помощник не поднялся, приостанавливать нечего.
+        pause_->setEnabled(!scan.stage.isEmpty());
+
+        // Этапы: для проверки одного файла список из одной строки ничего
+        // не говорит — тогда карточку не показываем.
+        static const char* kStageTitles[] = { "Files", "Running programs", "Startup items", "Scheduled tasks",
+                                              "Services and drivers", "Network connections" };
+        QStringList labels;
+        for (int module : scan.stages)
+            if (module >= 0 && module < 6) labels << TR(kStageTitles[module]);
+        stagesCard_->setVisible(labels.size() > 1);
+        stageList_->set(labels, st.currentStageIndex(), scan.paused);
         current_->setFullText(QDir::toNativeSeparators(scan.currentItem));
         found_->setText(found ? TR("Found so far: %1").arg(found) : TR("Nothing found so far"));
         setStyleProp(found_, "tone", found ? "danger" : "");

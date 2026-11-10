@@ -175,20 +175,62 @@ HomePage::HomePage(MainWindow* window)
     body()->addWidget(lower);
     body()->addStretch(1);
 
-    connect(&AppState::instance(), &AppState::scanChanged, this, &HomePage::refresh);
-    connect(&AppState::instance(), &AppState::itemsReset, this, &HomePage::refresh);
-    connect(&AppState::instance(), &AppState::itemAdded, this, &HomePage::refresh);
-    connect(&AppState::instance(), &AppState::itemChanged, this, &HomePage::refresh);
+    connect(&AppState::instance(), &AppState::scanChanged, this, &HomePage::refreshScan);
+    connect(&AppState::instance(), &AppState::itemsReset, this, &HomePage::refreshScan);
+    connect(&AppState::instance(), &AppState::itemAdded, this, &HomePage::refreshScan);
+    connect(&AppState::instance(), &AppState::itemChanged, this, &HomePage::refreshScan);
+    connect(&ScanHistory::instance(), &ScanHistory::changed, this, &HomePage::refreshScan);
     connect(window, &MainWindow::quarantineChanged, this, &HomePage::refresh);
     connect(window, &MainWindow::signaturesChanged, this, &HomePage::refresh);
-    connect(&ScanHistory::instance(), &ScanHistory::changed, this, &HomePage::refresh);
     refresh();
 }
 
 void HomePage::onShown() { refresh(); }
 
+void HomePage::showEvent(QShowEvent* e) {
+    Page::showEvent(e);
+    // Пока страница была скрыта (другая вкладка, окно в трее), она не
+    // обновлялась — догоняем в момент показа.
+    refresh();
+}
+
 void HomePage::refresh() {
+    // Невидимой странице обновляться незачем: она обновится, когда её откроют.
+    if (!isVisible() && filled_) return;
+    filled_ = true;
+
     MainWindow* w = window();
+    quarantineCount_ = w->demoMode() ? 2 : static_cast<int>(Quarantine::Instance().Count());
+    hashCount_ = HashDatabase::Get().Count();
+    const auto rulesFile = SignatureStore::RulesFile("core");
+    const uint32_t rulesStamp = rulesFile.empty() ? 0 : SignatureStore::RulesStamp(rulesFile);
+    databaseStamp_ = std::max(HashDatabase::Get().NewestStamp(), rulesStamp);
+
+    const AppSettings& s = AppSettings::Get();
+    guardState_->setText(s.downloadGuard() ? TR("On: new files in Downloads and on the desktop are checked at once")
+                                           : TR("Off"));
+    const QDateTime next = Automation::nextRun();
+    const Automation* automation = Automation::instance();
+    scheduleState_->setText(!next.isValid() ? TR("Off")
+        : automation && automation->schedulePostponed()
+            ? TR("Postponed: a full-screen app is running")
+            : TR("Next: %1").arg(QLocale(Lang::instance().current() == Lang::Id::Ru ? QLocale::Russian : QLocale::English)
+                                     .toString(next, "d MMM, HH:mm")));
+    const QDateTime sigs = s.lastSignatureUpdate();
+    signaturesState_->setText(s.autoUpdateSignatures()
+        ? (sigs.isValid() ? TR("Automatic, last update %1").arg(Ago(sigs)) : TR("Automatic"))
+        : TR("Manual only"));
+    updateState_->setText(Updater::instance().hasUpdate()
+        ? TR("Version %1 is available").arg(Updater::instance().latest().version)
+        : (s.autoInstallUpdates() ? TR("Installed automatically, version %1").arg(Updater::currentVersion())
+                                  : TR("You will be offered new versions, version %1").arg(Updater::currentVersion())));
+    refreshScan();
+}
+
+void HomePage::refreshScan() {
+    if (!isVisible() && !heroTitle_->text().isEmpty()) return;
+    MainWindow* w = window();
+    if (!w) return;
     const AppState& st = AppState::instance();
     const AppState::Scan& scan = st.scan();
     const int pending = st.pendingCount();
@@ -204,10 +246,13 @@ void HomePage::refresh() {
     secondary_->setVisible(true);
 
     if (scan.running) {
-        heroIcon_->set(Icons::Id::Scan, ColorRole::AccentText);
-        heroTitle_->setText(scan.percent >= 0 ? TR("Scan in progress — %1%").arg(scan.percent)
-                                              : TR("Scan in progress"));
-        heroText_->setText(Texts::stageLabel(scan.stage));
+        heroIcon_->set(Icons::Id::Scan, scan.paused ? ColorRole::Warn : ColorRole::AccentText);
+        heroTitle_->setText(scan.paused ? (scan.percent >= 0 ? TR("Scan paused — %1%").arg(scan.percent)
+                                                             : TR("Scan paused"))
+                            : scan.percent >= 0 ? TR("Scan in progress — %1%").arg(scan.percent)
+                                                : TR("Scan in progress"));
+        heroText_->setText(scan.paused ? TR("Nothing is being checked. Continue when you are ready.")
+                                       : Texts::stageLabel(scan.stage));
         heroProgress_->setVisible(true);
         heroProgress_->setValue(scan.percent >= 0 ? scan.percent / 100.0 : -1.0);
         primary_->setText(TR("Show progress"));
@@ -266,32 +311,9 @@ void HomePage::refresh() {
     pending_->set(QString::number(pending),
                   pending ? TR("Open the results to decide") : TR("Nothing is waiting"),
                   pending ? ColorRole::Danger : ColorRole::Text);
-    const int inQuarantine = w->demoMode() ? 2 : static_cast<int>(Quarantine::Instance().List().size());
-    quarantine_->set(QString::number(inQuarantine),
-                     inQuarantine ? TR("Isolated and harmless") : TR("Quarantine is empty"));
-
-    const uint64_t hashes = HashDatabase::Get().Count();
-    const auto rulesFile = SignatureStore::RulesFile("core");
-    const uint32_t rulesStamp = rulesFile.empty() ? 0 : SignatureStore::RulesStamp(rulesFile);
-    const uint32_t stamp = std::max(HashDatabase::Get().NewestStamp(), rulesStamp);
-    databases_->set(StampDate(stamp),
-                    TR("%1 known files, signature rules").arg(formatCount(static_cast<qint64>(hashes))),
-                    hashes ? ColorRole::Text : ColorRole::Warn);
-
-    const AppSettings& s = AppSettings::Get();
-    guardState_->setText(s.downloadGuard() ? TR("On: new files in Downloads and on the desktop are checked at once")
-                                           : TR("Off"));
-    const QDateTime next = Automation::nextRun();
-    scheduleState_->setText(next.isValid()
-        ? TR("Next: %1").arg(QLocale(Lang::instance().current() == Lang::Id::Ru ? QLocale::Russian : QLocale::English)
-                                 .toString(next, "d MMM, HH:mm"))
-        : TR("Off"));
-    const QDateTime sigs = s.lastSignatureUpdate();
-    signaturesState_->setText(s.autoUpdateSignatures()
-        ? (sigs.isValid() ? TR("Automatic, last update %1").arg(Ago(sigs)) : TR("Automatic"))
-        : TR("Manual only"));
-    updateState_->setText(Updater::instance().hasUpdate()
-        ? TR("Version %1 is available").arg(Updater::instance().latest().version)
-        : (s.autoInstallUpdates() ? TR("Installed automatically, version %1").arg(Updater::currentVersion())
-                                  : TR("You will be offered new versions, version %1").arg(Updater::currentVersion())));
+    quarantine_->set(QString::number(quarantineCount_),
+                     quarantineCount_ ? TR("Isolated and harmless") : TR("Quarantine is empty"));
+    databases_->set(StampDate(databaseStamp_),
+                    TR("%1 known files, signature rules").arg(formatCount(static_cast<qint64>(hashCount_))),
+                    hashCount_ ? ColorRole::Text : ColorRole::Warn);
 }

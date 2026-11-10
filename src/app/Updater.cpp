@@ -33,6 +33,17 @@ QNetworkRequest Request(const QUrl& url) {
     return r;
 }
 
+// Контрольная сумма файла сходится с ожидаемой. Пустая ожидаемая сумма
+// (в описании релиза её не оказалось) — сверять не с чем.
+bool HashMatches(const QString& path, const QString& expectedHex) {
+    if (expectedHex.isEmpty()) return true;
+    QFile f(path);
+    if (!f.open(QIODevice::ReadOnly)) return false;
+    QCryptographicHash h(QCryptographicHash::Sha256);
+    if (!h.addData(&f)) return false;
+    return h.result().toHex() == expectedHex.toLatin1();
+}
+
 QList<int> Parts(const QString& v) {
     QList<int> out;
     for (const QString& p : QString(v).remove(QRegularExpression("^[vV]")).split(QRegularExpression("[.-]")))
@@ -115,18 +126,26 @@ void Updater::download() {
     if (!available_ || downloading_) return;
     const QString target = cacheDir() + "/" + latest_.assetName;
 
-    // Уже скачан целиком и сходится по размеру (и хэшу, если он известен).
+    // Уже скачан целиком и сходится по размеру и хэшу, если он известен.
+    // Хэш сверяется и здесь: файл пролежал в папке пользователя, и
+    // запускать его с правами администратора «по памяти» нельзя.
     QFileInfo done(target);
     if (done.exists() && done.size() == latest_.assetSize) {
-        downloaded_ = target;
-        emit downloadFinished(target);
-        return;
+        if (HashMatches(target, latest_.sha256)) {
+            downloaded_ = target;
+            emit downloadFinished(target);
+            return;
+        }
+        QFile::remove(target);
     }
 
     const QString partPath = target + ".part";
     partFile_ = new QFile(partPath, this);
     if (!partFile_->open(QIODevice::ReadWrite)) {
-        emit downloadFailed(partFile_->errorString());
+        const QString reason = partFile_->errorString();
+        partFile_->deleteLater();
+        partFile_ = nullptr;
+        emit downloadFailed(reason);
         return;
     }
     qint64 have = partFile_->size();
@@ -164,23 +183,22 @@ void Updater::download() {
             return;
         }
         if (size != latest_.assetSize) {
+            // Докачка легла не на тот остаток: начинать с нуля, иначе
+            // каждый следующий запуск упирался бы в тот же обрезок.
+            if (size > latest_.assetSize) QFile::remove(partPath);
             emit downloadFailed(QStringLiteral("size mismatch"));
             return;
         }
-        if (!latest_.sha256.isEmpty()) {
-            QFile f(partPath);
-            f.open(QIODevice::ReadOnly);
-            QCryptographicHash h(QCryptographicHash::Sha256);
-            h.addData(&f);
-            if (h.result().toHex() != latest_.sha256.toLatin1()) {
-                f.close();
-                QFile::remove(partPath);
-                emit downloadFailed(QStringLiteral("checksum mismatch"));
-                return;
-            }
+        if (!HashMatches(partPath, latest_.sha256)) {
+            QFile::remove(partPath);
+            emit downloadFailed(QStringLiteral("checksum mismatch"));
+            return;
         }
         QFile::remove(target);
-        QFile::rename(partPath, target);
+        if (!QFile::rename(partPath, target)) {
+            emit downloadFailed(QStringLiteral("cannot save the installer"));
+            return;
+        }
         downloaded_ = target;
         Logger::Instance().Info("[Update] downloaded " + target.toStdString());
         emit downloadFinished(target);

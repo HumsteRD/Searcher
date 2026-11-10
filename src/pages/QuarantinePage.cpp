@@ -5,8 +5,12 @@
 #include "../app/ScannerBridge.h"
 
 #include <QDateTime>
+#include <QDir>
+#include <QFileInfo>
 #include <QHBoxLayout>
 #include <QVBoxLayout>
+
+#include <memory>
 
 using namespace Ui;
 
@@ -54,9 +58,20 @@ QuarantinePage::QuarantinePage(MainWindow* window)
         Modal::confirm(window->overlayHost(), TR("Delete everything in quarantine?"),
                        TR("All isolated files will be deleted for good. This cannot be undone."),
                        TR("Delete all"), true, [this, window]() {
+                           // Список перерисовывается один раз — после последнего
+                           // ответа, а не на каждый удалённый файл.
+                           auto left = std::make_shared<int>(static_cast<int>(items_.size()));
+                           auto failed = std::make_shared<int>(0);
                            for (const QuarantineItem& item : items_) {
                                window->bridge()->deleteFromQuarantine(QString::fromStdString(item.id),
-                                   [window](bool, const QString&) { emit window->quarantineChanged(); });
+                                   [window, left, failed](bool ok, const QString&) {
+                                       if (!ok) ++*failed;
+                                       if (--*left > 0) return;
+                                       if (*failed) window->toast("CRIT", TR("Could not delete some files"),
+                                                                  TR("Not deleted: %1").arg(*failed));
+                                       else window->toast("OK", TR("Quarantine is empty"));
+                                       emit window->quarantineChanged();
+                                   });
                            }
                        });
     });
@@ -122,14 +137,23 @@ QWidget* QuarantinePage::makeRow(const QuarantineItem& item) {
     MainWindow* w = window();
     const QString id = QString::fromStdString(item.id);
     const QString nameText = QString::fromStdWString(item.originalName);
-    connect(restore, &QPushButton::clicked, this, [w, id, nameText]() {
+    const QString originalPath = QDir::toNativeSeparators(QString::fromStdWString(item.originalPath));
+    connect(restore, &QPushButton::clicked, this, [w, id, nameText, originalPath]() {
         Modal::confirm(w->overlayHost(), TR("Restore %1?").arg(nameText),
                        TR("The file goes back to where it was and can run again. Restore it only if you are "
                           "sure it was flagged by mistake."),
-                       TR("Restore"), false, [w, id, nameText]() {
-                           w->bridge()->restoreFromQuarantine(id, [w, nameText](bool ok, const QString& err) {
-                               if (ok) w->toast("OK", TR("Restored"), nameText);
-                               else w->toast("CRIT", TR("Could not restore the file"), err);
+                       TR("Restore"), false, [w, id, nameText, originalPath]() {
+                           w->bridge()->restoreFromQuarantine(id, [w, nameText, originalPath](bool ok, const QString& info) {
+                               if (!ok) {
+                                   w->toast("CRIT", TR("Could not restore the file"), info);
+                               } else if (!info.isEmpty() &&
+                                          QDir::toNativeSeparators(info).compare(originalPath, Qt::CaseInsensitive) != 0) {
+                                   // На прежнем месте уже лежит другой файл — его не трогали.
+                                   w->toast("OK", TR("Restored under a new name"),
+                                            TR("The original place is taken: %1").arg(QFileInfo(info).fileName()));
+                               } else {
+                                   w->toast("OK", TR("Restored"), nameText);
+                               }
                                emit w->quarantineChanged();
                            });
                        });

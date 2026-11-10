@@ -224,8 +224,24 @@ void Button::refreshIcon() {
     default:              c = pal().text; break;
     }
     const int sz = size_ == Size::Small ? 14 : 16;
-    setIcon(Icons::icon(*icon_, sz, c, pal().textDisabled));
-    setIconSize(QSize(sz, sz));
+    // Между иконкой и подписью Qt оставляет четыре пикселя, и иконка
+    // «прилипает» к тексту. Отступ добавляем в саму картинку — полем справа.
+    const int gap = 4;
+    auto padded = [&](const QColor& color) {
+        const QPixmap src = Icons::pixmap(*icon_, sz, color);
+        const qreal dpr = src.devicePixelRatio();
+        QPixmap out(static_cast<int>((sz + gap) * dpr), static_cast<int>(sz * dpr));
+        out.fill(Qt::transparent);
+        out.setDevicePixelRatio(dpr);
+        QPainter p(&out);
+        p.drawPixmap(0, 0, src);
+        return out;
+    };
+    QIcon icon;
+    icon.addPixmap(padded(c), QIcon::Normal);
+    icon.addPixmap(padded(pal().textDisabled), QIcon::Disabled);
+    setIcon(icon);
+    setIconSize(QSize(sz + gap, sz));
 }
 
 // ─── IconButton ───

@@ -28,6 +28,10 @@ public:
     void setUnpackArchives(bool on);
     bool autoQuarantine() const;
     void setAutoQuarantine(bool on);
+    // Нагрузка при проверке файлов: 0 — щадящая, 1 — обычная, 2 — полная.
+    int  scanIntensity() const;
+    void setScanIntensity(int level);
+    static int threadsFor(int intensity);   // 0 — пусть решает ядро
 
     QStringList excludedPaths() const;
     void setExcludedPaths(const QStringList& paths);
@@ -44,6 +48,13 @@ public:
     // ─── Защита ───
     bool downloadGuard() const;
     void setDownloadGuard(bool on);
+    // Предлагать проверку подключённой флешки или внешнего диска.
+    bool driveGuard() const;
+    void setDriveGuard(bool on);
+    // Не беспокоить, пока на весь экран идёт игра, фильм или презентация:
+    // плановая проверка откладывается, некритичные уведомления не показываются.
+    bool quietWhenFullscreen() const;
+    void setQuietWhenFullscreen(bool on);
 
     // ─── Обновления ───
     bool checkUpdatesOnStart() const;      // по умолчанию включено

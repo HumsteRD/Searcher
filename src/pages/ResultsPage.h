@@ -3,6 +3,7 @@
 #include "Page.h"
 
 class QBoxLayout;
+class QLineEdit;
 class QScrollArea;
 class QVBoxLayout;
 class ThreatRow;
@@ -21,6 +22,7 @@ protected:
 
 private:
     void rebuild();
+    void addRow(int row);
     void updateRow(int row);
     void select(int row);
     void applyFilter();
@@ -35,7 +37,10 @@ private:
     QVBoxLayout*    list_;
     ThreatDetail*   detail_;
     Ui::EmptyState* empty_;
-    QList<ThreatRow*> rows_;
+    QLineEdit*      search_;
+    QLabel*         noMatch_;
+    QList<ThreatRow*> rows_;    // по номеру находки
+    QList<ThreatRow*> order_;   // в порядке показа: по убыванию уровня
     int selected_ = -1;
     bool wide_ = true;
 };

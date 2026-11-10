@@ -30,6 +30,7 @@ bool ScannerBridge::startScan(const QJsonObject& args, QString* error) {
         return false;
     }
     lastCancelled_ = false;
+    lastPaused_ = false;
     helper_->send(Ipc::kCmdStartScan, args, [this](bool ok, const QJsonObject&, const QString& e) {
         if (ok) return;
         Logger::Instance().Error("[Bridge] scan refused: " + e.toStdString());
@@ -41,6 +42,13 @@ bool ScannerBridge::startScan(const QJsonObject& args, QString* error) {
 
 void ScannerBridge::cancelScan() {
     if (helper_->isConnected()) helper_->send(Ipc::kCmdCancelScan);
+}
+
+void ScannerBridge::setScanPaused(bool paused) {
+    if (!helper_->isConnected()) return;
+    QJsonObject args;
+    args["paused"] = paused;
+    helper_->send(Ipc::kCmdPauseScan, args);
 }
 
 void ScannerBridge::applyAction(int index, int action) {
@@ -76,7 +84,8 @@ void ScannerBridge::restoreFromQuarantine(const QString& id, DoneCallback callba
     args["id"] = id;
     helper_->send(Ipc::kCmdQuarantineRestore, args,
                   [callback](bool ok, const QJsonObject& result, const QString& e) {
-                      callback(ok && result["success"].toBool(), e);
+                      const bool done = ok && result["success"].toBool();
+                      callback(done, done ? result["path"].toString() : e);
                   });
 }
 
@@ -170,6 +179,11 @@ void ScannerBridge::onEvent(const QString& name, const QJsonObject& payload) {
     } else if (name == Ipc::kEventProgress) {
         lastCancelled_ = payload["cancelled"].toBool();
         emit progressChanged(payload["percent"].toInt(), payload["stage"].toString());
+        const bool paused = payload["paused"].toBool();
+        if (paused != lastPaused_) {
+            lastPaused_ = paused;
+            emit pausedChanged(paused);
+        }
     } else if (name == Ipc::kEventDetail) {
         emit scanDetail(payload["item"].toString(), static_cast<qint64>(payload["objects"].toDouble()),
                         payload["elapsedMs"].toInt(), payload["etaMs"].toInt(-1));

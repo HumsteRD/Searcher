@@ -50,7 +50,9 @@ HelpPage::HelpPage(MainWindow* window)
             "Full scan goes through every file on every local drive. Run it when you suspect an infection or "
             "after the quick scan found something.",
             "To check one file, just drag it into the window. The verdict appears in seconds and does not need "
-            "administrator rights." } },
+            "administrator rights.",
+            "A running scan can be paused and continued from the same place, for example for the time of a game "
+            "or a video call. In Settings you can choose how much of the processor a scan may use." } },
         { Icons::Id::Alert, "What to do with a finding",
           { "Open Results and select the finding: it says what kind of threat it is, why it was flagged and "
             "what to do.",
@@ -78,6 +80,10 @@ HelpPage::HelpPage(MainWindow* window)
           { "While the program is open or in the tray, new files in Downloads and on the desktop are checked as "
             "soon as the browser finishes downloading them. If something dangerous arrives, you get a "
             "notification right away." } },
+        { Icons::Id::Drive, "Flash drives and external disks",
+          { "When you connect a flash drive or an external disk, the program offers to check it. Agree before "
+            "opening files from it: removable drives are the second most common way malware gets onto a computer.",
+            "You can also add any drive to a custom scan from the list of connected drives." } },
         { Icons::Id::Cube, "Behavior and Windows Sandbox",
           { "Behavior runs a file in Windows Sandbox, a disposable copy of Windows, and shows what it did: files, "
             "registry, processes, network. Nothing it does reaches your computer.",
@@ -90,6 +96,10 @@ HelpPage::HelpPage(MainWindow* window)
         { Icons::Id::ArrowUp, "Updates",
           { "Signature databases update themselves once a day. New versions of the program are offered when they "
             "come out; in Settings you can let them install automatically." } },
+        { Icons::Id::Bolt, "Keyboard shortcuts",
+          { "F5 starts a quick scan. Ctrl+O chooses files to check. Ctrl+F searches in Results and in the Log.",
+            "Ctrl+1 to Ctrl+9 open the pages in the order of the side menu, Ctrl+comma opens Settings, "
+            "F1 opens this page. In dialogs, Enter confirms and Esc cancels." } },
     };
     for (const Topic& t : topics) body()->addWidget(MakeTopic(t));
     body()->addStretch(1);

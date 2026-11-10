@@ -23,17 +23,20 @@ public:
         int    index = -1;        // номер у помощника, по нему применяются действия
         Threat threat;
         bool   busy = false;      // действие в процессе
+        bool   carried = false;   // найдена до текущей проверки и перенесена в её список
         QString vtText;           // результат VirusTotal
         int    vtState = 0;       // 0 нет, 1 ждём, 2 чисто, 3 опасно, 4 неизвестно, 5 ошибка
     };
 
     struct Scan {
         bool      running = false;
+        bool      paused = false;     // идёт, но приостановлена пользователем
         bool      finished = false;   // хотя бы одна проверка завершилась в этом запуске
         bool      cancelled = false;
         int       mode = 0;           // ScanConfig::Mode
         bool      singleTarget = false;
         QString   target;             // для разовой проверки файла
+        QVector<int> stages;          // включённые модули (ScanConfig::Module) в порядке выполнения
         int       percent = 0;        // -1 — считаем объём
         QString   stage;
         QString   currentItem;
@@ -48,14 +51,21 @@ public:
     const QVector<Item>& items() const { return items_; }
     int  pendingCount() const;       // находки без принятого решения
     int  criticalCount() const;
+    int  foundInScan() const;        // найдено текущей (последней) проверкой, без перенесённых
 
     // Изменения — только отсюда (зовёт MainWindow по событиям моста).
-    void beginScan(int mode, bool singleTarget, const QString& target);
+    void beginScan(int mode, bool singleTarget, const QString& target, const QVector<int>& stages = {});
+    // Имя этапа, которое присылает помощник, для модуля; и обратно — номер
+    // текущего этапа в scan().stages (−1 — ещё подготовка, размер — всё пройдено).
+    static QString stageName(int module);
+    int currentStageIndex() const;
     void setProgress(int percent, const QString& stage);
+    void setPaused(bool paused);
     void setDetail(const QString& item, qint64 objects, int elapsedMs, int etaMs);
     void finishScan(bool cancelled);
     void addThreat(int index, const QJsonObject& payload);
     void addLocalThreat(const Threat& threat);   // находка вне проверки (без действий через помощник)
+    void clearItems();                           // убрать все находки (демонстрационный режим)
     void setBusy(int row, bool busy);
     void setThreat(int row, const Threat& threat);
     void applyActionResult(int helperIndex, const QString& status, const QString& message, bool ok);

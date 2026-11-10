@@ -4,6 +4,7 @@
 #include "AppState.h"
 #include "Automation.h"
 #include "DownloadGuard.h"
+#include "DriveWatcher.h"
 #include "Lang.h"
 #include "LocalCheck.h"
 #include "ScanHistory.h"
@@ -16,6 +17,7 @@
 #include "../core/Scanner.h"
 #include "../core/ThreatJson.h"
 #include "../engine/HashDatabase.h"
+#include "../engine/SignatureStore.h"
 #include "../pages/BehaviorPage.h"
 #include "../pages/HelpPage.h"
 #include "../pages/HistoryPage.h"
@@ -31,15 +33,22 @@
 #include <dwmapi.h>
 
 #include <QApplication>
+#include <QClipboard>
 #include <QCloseEvent>
 #include <QDate>
+#include <QDesktopServices>
 #include <QDir>
 #include <QFile>
+#include <QFileDialog>
 #include <QFileInfo>
 #include <QHBoxLayout>
+#include <QJsonArray>
+#include <QJsonObject>
 #include <QMimeData>
 #include <QRegularExpression>
+#include <QShortcut>
 #include <QStackedWidget>
+#include <QUrl>
 #include <QTimer>
 #include <QVBoxLayout>
 
@@ -71,6 +80,7 @@ MainWindow::MainWindow(bool demo, QWidget* parent) : FramelessWindow(parent), de
     rebuildPages();
     wireBridge();
     wireServices();
+    installShortcuts();
 
     const QByteArray geometry = AppSettings::Get().windowGeometry();
     if (!geometry.isEmpty()) restoreGeometry(geometry);
@@ -179,7 +189,12 @@ void MainWindow::refreshBadges() {
 }
 
 void MainWindow::updateSidebarFooter() {
-    const uint32_t stamp = HashDatabase::Get().NewestStamp();
+    // Самая свежая из баз — хэшей или правил: та же дата, что на плитке
+    // «Базы сигнатур» на главной. Раньше здесь была только база хэшей, и
+    // две даты на одном экране расходились.
+    const auto rules = SignatureStore::RulesFile("core");
+    const uint32_t stamp = std::max(HashDatabase::Get().NewestStamp(),
+                                    rules.empty() ? 0u : SignatureStore::RulesStamp(rules));
     const QString date = stamp ? QDate::fromString(QString::number(stamp), "yyyyMMdd").toString("dd.MM.yyyy")
                                : TR("not loaded");
     sidebar_->setFooter(TR("Databases: %1").arg(date), TR("Version %1").arg(Updater::currentVersion()));
@@ -213,6 +228,10 @@ void MainWindow::wireBridge() {
     connect(bridge_, &ScannerBridge::scanDetail, this, [&st](QString item, qint64 objects, int elapsed, int eta) {
         st.setDetail(item, objects, elapsed, eta);
     });
+    connect(bridge_, &ScannerBridge::pausedChanged, this, [this, &st](bool paused) {
+        st.setPaused(paused);
+        appendLog(paused ? TR("The scan is paused.") : TR("The scan continues."), "INF");
+    });
     connect(bridge_, &ScannerBridge::threatReported, this, [this, &st](int index, QJsonObject payload) {
         st.addThreat(index, payload);
         refreshBadges();
@@ -234,6 +253,7 @@ void MainWindow::wireBridge() {
                     appendLog(QString::fromStdWString(t.name) + ": " + Texts::actionResult(message, ok),
                               ok ? "INF" : "ERR");
                     if (!ok) toast("CRIT", TR("Could not apply the action"), Texts::actionResult(message, ok));
+                    ScanHistory::instance().syncStatus(t);
                 }
                 emit quarantineChanged();
             });
@@ -268,13 +288,22 @@ void MainWindow::startScan(int mode, const QStringList& paths, bool filesOnly) {
         return;
     }
     const bool single = filesOnly && paths.size() == 1;
-    st.beginScan(mode, single, single ? paths.first() : QString());
+    const QJsonObject args = AppSettings::Get().scanArgs(mode, paths, filesOnly);
+
+    // Этапы для страницы проверки: включённые модули в том порядке, в
+    // каком их выполняет помощник (быстрые первыми, файлы последними).
+    QVector<int> stages;
+    const QJsonArray enabled = args["modules"].toArray();
+    for (int module : { 1, 2, 3, 4, 5, 0 })
+        if (module < enabled.size() && enabled.at(module).toBool()) stages << module;
+
+    st.beginScan(mode, single, single ? paths.first() : QString(), stages);
     refreshBadges();
     navigate(Scan);
     appendLog(TR("Scan started: %1").arg(Texts::modeLabel(mode)), "INF");
 
     QString error;
-    if (!bridge_->startScan(AppSettings::Get().scanArgs(mode, paths, filesOnly), &error)) {
+    if (!bridge_->startScan(args, &error)) {
         st.finishScan(true);
         appendLog(error, "ERR");
         toast("MED", TR("The scan did not start"),
@@ -286,6 +315,11 @@ void MainWindow::startScan(int mode, const QStringList& paths, bool filesOnly) {
 void MainWindow::cancelScan() {
     bridge_->cancelScan();
     appendLog(TR("Stopping the scan…"), "WRN");
+}
+
+void MainWindow::pauseScan(bool paused) {
+    if (!AppState::instance().scan().running) return;
+    bridge_->setScanPaused(paused);
 }
 
 void MainWindow::onScanFinished(bool cancelled) {
@@ -303,6 +337,9 @@ void MainWindow::onScanFinished(bool cancelled) {
     rec.cancelled = cancelled;
     rec.target = scan.target;
     for (const AppState::Item& it : st.items()) {
+        // Перенесённое из прошлого (опасная загрузка, ждущая решения)
+        // эта проверка не находила — в её запись оно не идёт.
+        if (it.carried) continue;
         rec.findings.push_back(it.threat);
         ++rec.threats;
         if (it.threat.severity == Severity::Critical) ++rec.critical;
@@ -365,7 +402,10 @@ void MainWindow::applyAction(int row, int action) {
         s.setBusy(row, false);
         s.setThreat(row, updated);
         refreshBadges();
+        appendLog(QString::fromStdWString(updated.name) + ": " + Texts::actionResult(message, ok),
+                  ok ? "INF" : "ERR");
         if (!ok) toast("CRIT", TR("Could not apply the action"), Texts::actionResult(message, ok));
+        ScanHistory::instance().syncStatus(updated);
         emit quarantineChanged();
     };
 
@@ -396,6 +436,7 @@ void MainWindow::allowItem(int row) {
     updated.status = ThreatStatus::Ignored;
     updated.actionMessage = L"trusted";
     st.setThreat(row, updated);
+    ScanHistory::instance().syncStatus(updated);
     refreshBadges();
     toast("OK", TR("Marked as trusted"), TR("Future scans will skip this file."));
 }
@@ -442,17 +483,37 @@ void MainWindow::wireServices() {
 
     guard_ = new DownloadGuard(this);
 
+    // Подключённая флешка или внешний диск: предложить проверку.
+    drives_ = new DriveWatcher(this);
+    connect(drives_, &DriveWatcher::driveArrived, this, [this](DriveWatcher::Drive drive) {
+        const QString root = drive.root;
+        appendLog(TR("Drive connected: %1").arg(drive.title()), "INF");
+        if (AppState::instance().scan().running) return;
+        toast("ACCENT", TR("%1 connected").arg(drive.title()),
+              TR("Check it before opening files from it."), TR("Scan it"),
+              [this, root]() { startScan(2, { root }, true); });
+    });
+
     connect(&LocalCheck::instance(), &LocalCheck::fileChecked, this, [this](QString tag, LocalCheck::Result r) {
         const QString name = QFileInfo(r.path).fileName();
+        // «Подробнее» в уведомлении открывает карточку файла: хэш, подпись,
+        // размер. Ради этого файл и проверяют — не только ради «да/нет».
+        const auto details = [this, r]() {
+            showFileReport(r.path, r.clean, r.skipped, r.skipReason, r.sha256, r.signer, r.size, r.container,
+                           r.clean ? QString() : Texts::headline(r.threat));
+        };
         if (r.clean) {
             if (tag == "drop") {
                 if (r.skipped) {
                     toast("MED", TR("Could not check %1").arg(name),
-                          r.skipReason == "empty" ? TR("The file is empty.") : TR("The file could not be read."));
+                          r.skipReason == "empty" ? TR("The file is empty.")
+                          : r.skipReason == "error" ? TR("The file is damaged or built to break scanners.")
+                                                    : TR("The file could not be read."));
                 } else {
                     toast("OK", TR("%1: no threats found").arg(name),
                           r.signer.isEmpty() ? TR("Not found in the databases, no signatures matched.")
-                                             : TR("Digitally signed by %1.").arg(r.signer));
+                                             : TR("Digitally signed by %1.").arg(r.signer),
+                          TR("Details"), details);
                 }
             }
             ScanRecord rec;
@@ -539,8 +600,79 @@ void MainWindow::wireServices() {
 
 void MainWindow::applySettings() {
     if (guard_) guard_->setEnabled(!demo_ && AppSettings::Get().downloadGuard());
+    if (drives_) drives_->setEnabled(!demo_ && AppSettings::Get().driveGuard());
     if (automation_) automation_->applyTraySetting();
     refreshBadges();
+}
+
+void MainWindow::showFileReport(const QString& path, bool clean, bool skipped, const QString& skipReason,
+                                const QString& sha256, const QString& signer, qint64 size,
+                                const QString& container, const QString& headline)
+{
+    const QFileInfo fi(path);
+    auto* m = new Modal(overlayHost(), fi.fileName(),
+                        skipped ? (skipReason == "empty" ? TR("The file is empty.") : TR("The file could not be read."))
+                        : clean ? TR("No threats found. This is not a guarantee: a file that is new to the "
+                                     "databases looks the same.")
+                                : headline);
+    m->setIcon(clean ? (skipped ? Icons::Id::Info : Icons::Id::ShieldCheck) : Icons::Id::ShieldAlert,
+               clean ? (skipped ? ColorRole::Warn : ColorRole::Ok) : ColorRole::Danger);
+    m->setMaxWidth(600);
+
+    auto field = [m](const QString& label, const QString& value, bool mono = true) {
+        if (value.isEmpty()) return;
+        auto* col = new QVBoxLayout();
+        col->setSpacing(2);
+        col->addWidget(makeLabel(label, "label"));
+        auto* v = makeLabel(breakable(value), mono ? "mono" : "body");
+        v->setWordWrap(true);
+        v->setTextInteractionFlags(Qt::TextSelectableByMouse);
+        col->addWidget(v);
+        m->content()->addLayout(col);
+    };
+    m->content()->addWidget(makeDivider());
+    field(TR("Location"), QDir::toNativeSeparators(fi.absoluteFilePath()));
+    field(TR("Size"), formatBytes(size), false);
+    field(TR("Digital signature"), signer.isEmpty() ? TR("none") : signer, false);
+    if (!container.isEmpty())
+        field(TR("Contents"), container == "pyinstaller"
+                  ? TR("A Python program packed with PyInstaller: its code was unpacked and checked")
+                  : TR("The contents of the archive were unpacked and checked"), false);
+    field(QStringLiteral("SHA-256"), sha256);
+
+    if (!sha256.isEmpty()) {
+        m->addButton(TR("Copy SHA-256"), Button::Variant::Ghost,
+                     [sha256]() { QApplication::clipboard()->setText(sha256); }, false);
+        m->addButton(TR("Open on VirusTotal"), Button::Variant::Secondary, [sha256]() {
+            QDesktopServices::openUrl(QUrl("https://www.virustotal.com/gui/file/" + sha256));
+        }, false);
+    }
+    m->addButton(TR("Close"), Button::Variant::Primary);
+    m->open();
+}
+
+void MainWindow::installShortcuts() {
+    // Ctrl+1…9 — страницы по порядку бокового меню.
+    for (int i = 0; i < PageCount && i < 9; ++i) {
+        auto* sc = new QShortcut(QKeySequence(Qt::CTRL | static_cast<Qt::Key>(Qt::Key_1 + i)), this);
+        connect(sc, &QShortcut::activated, this, [this, i]() { navigate(i); });
+    }
+    auto* quick = new QShortcut(QKeySequence(Qt::Key_F5), this);
+    connect(quick, &QShortcut::activated, this, [this]() {
+        if (!AppState::instance().scan().running) startScan(0);
+        else navigate(Scan);
+    });
+    auto* find = new QShortcut(QKeySequence::Find, this);
+    connect(find, &QShortcut::activated, this, [this]() { emit searchRequested(); });
+    auto* open = new QShortcut(QKeySequence::Open, this);
+    connect(open, &QShortcut::activated, this, [this]() {
+        const QStringList files = QFileDialog::getOpenFileNames(this, TR("Choose files to check"));
+        if (!files.isEmpty()) checkFiles(files);
+    });
+    auto* settings = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_Comma), this);
+    connect(settings, &QShortcut::activated, this, [this]() { navigate(Settings); });
+    auto* help = new QShortcut(QKeySequence::HelpContents, this);
+    connect(help, &QShortcut::activated, this, [this]() { navigate(Help); });
 }
 
 void MainWindow::offerUpdate(bool manual) {

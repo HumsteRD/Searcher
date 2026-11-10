@@ -225,6 +225,15 @@ QWidget* SettingsPage::buildScanning() {
               TR("Known malware is isolated at once, without waiting for your decision."),
               s.autoQuarantine(), [](bool on) { AppSettings::Get().setAutoQuarantine(on); });
 
+    // Нагрузка: сколько потоков читает и проверяет файлы.
+    col->addWidget(makeDivider());
+    auto* intensity = new Segmented({ TR("Gentle"), TR("Balanced"), TR("Maximum") });
+    intensity->setCurrent(s.scanIntensity());
+    connect(intensity, &Segmented::currentChanged, this, [](int i) { AppSettings::Get().setScanIntensity(i); });
+    col->addWidget(new SettingRow(TR("Scan speed"),
+        TR("Gentle leaves the computer fully usable but takes longer. Maximum uses every processor core. "
+           "Applies to the next scan."), intensity));
+
     // Исключения.
     col->addWidget(makeDivider());
     auto* ex = new QWidget();
@@ -308,6 +317,25 @@ QWidget* SettingsPage::buildProtection() {
     col->addWidget(new SettingRow(TR("Download monitoring"),
         TR("New files in Downloads and on the desktop are checked as soon as they finish downloading. "
            "Works while the program is open or in the tray."), guard));
+
+    col->addWidget(makeDivider());
+    auto* driveGuard = new Toggle();
+    driveGuard->setCheckedNoAnim(AppSettings::Get().driveGuard());
+    connect(driveGuard, &QAbstractButton::toggled, this, [win](bool on) {
+        AppSettings::Get().setDriveGuard(on);
+        win->applySettings();
+    });
+    col->addWidget(new SettingRow(TR("Offer to scan connected drives"),
+        TR("When you plug in a flash drive or an external disk, the program offers to check it. "
+           "Nothing is scanned without your click."), driveGuard));
+
+    col->addWidget(makeDivider());
+    auto* quiet = new Toggle();
+    quiet->setCheckedNoAnim(AppSettings::Get().quietWhenFullscreen());
+    connect(quiet, &QAbstractButton::toggled, this, [](bool on) { AppSettings::Get().setQuietWhenFullscreen(on); });
+    col->addWidget(new SettingRow(TR("Do not disturb in full-screen apps"),
+        TR("While a game, a film or a presentation fills the screen, the scheduled scan waits and only "
+           "warnings about threats are shown."), quiet));
 
     col->addWidget(makeDivider());
     auto* scheduleBox = new QWidget();

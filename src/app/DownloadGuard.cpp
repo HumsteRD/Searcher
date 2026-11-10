@@ -8,6 +8,7 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QFileSystemWatcher>
+#include <QSet>
 #include <QStandardPaths>
 #include <QTimer>
 
@@ -63,9 +64,11 @@ void DownloadGuard::setEnabled(bool on) {
 }
 
 void DownloadGuard::scanFolders() {
+    QSet<QString> present;
     for (const QString& dir : folders()) {
         for (const QFileInfo& fi : QDir(dir).entryInfoList(QDir::Files | QDir::Hidden)) {
             const QString path = fi.absoluteFilePath();
+            present.insert(path);
             const qint64 mtime = fi.lastModified().toMSecsSinceEpoch();
             auto it = known_.find(path);
             if (it != known_.end() && it.value() == mtime) continue;
@@ -74,6 +77,11 @@ void DownloadGuard::scanFolders() {
             pending_.insert(path, Pending{ -1, 0 });
         }
     }
+    // Удалённые файлы забываем: иначе список рос бы всё время работы, а
+    // файл, скачанный заново под тем же именем и с той же датой (так
+    // распаковывают архивы), считался бы уже проверенным.
+    for (auto it = known_.begin(); it != known_.end();)
+        it = present.contains(it.key()) ? std::next(it) : known_.erase(it);
     if (!pending_.isEmpty() && !settle_->isActive()) settle_->start();
 }
 
