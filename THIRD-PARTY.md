@@ -11,7 +11,8 @@ Threat Scanner использует следующие компоненты и �
 | [MalwareBazaar](https://bazaar.abuse.ch/) от abuse.ch | хэши известных вредоносных файлов | CC0 |
 | [OpenSSL](https://www.openssl.org/) | HTTPS для обновлений и VirusTotal | Apache 2.0 |
 | [zlib](https://zlib.net/) | распаковка архивов | zlib License |
-| [zstd](https://github.com/facebook/zstd), [ICU](https://icu.unicode.org/), FreeType, HarfBuzz, libpng, PCRE2, Brotli, double-conversion, md4c | зависимости Qt | лицензии соответствующих проектов |
+| [zstd](https://github.com/facebook/zstd), FreeType, HarfBuzz, libpng, PCRE2, Brotli, bzip2, double-conversion, md4c | зависимости Qt | лицензии соответствующих проектов |
+| Среда выполнения Microsoft Visual C++ (`vcruntime140*.dll`, `msvcp140*.dll`) | стандартная библиотека C++, лежит рядом с программой | распространяемые файлы Visual Studio, условия лицензии Microsoft |
 
 Базы сигнатур — данные третьих сторон: они описывают известные угрозы и не дают
 гарантии, что неизвестный файл безопасен.

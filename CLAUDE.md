@@ -56,7 +56,16 @@ vcpkg install "qtbase[core,async-io,brotli,concurrent,dnslookup,doubleconversion
    (`installer/ThreatScanner.iss`) в `release/ThreatScanner-Setup-x.y.z.exe`
    и печатает SHA-256.
 3. Релиз на GitHub с тегом `vx.y.z`, файлом установщика (в имени `setup`,
-   расширение `.exe`) и строкой `SHA-256: <hex>` в описании.
+   расширение `.exe`) и строкой `SHA-256: <hex>` в описании. Первые
+   900 знаков описания программа показывает пользователю в окне
+   «Доступна версия…» — там должно быть главное, по-русски.
+
+Inno Setup 6 стоит у пользователя (`%LOCALAPPDATA%\Programs\Inno Setup 6`).
+`package.ps1` кладёт в поставку библиотеки Visual C++ из папки `Redist`
+компилятора: на чистой Windows их нет, и без них программа не стартует.
+`ThreatAgent` собран со статической средой выполнения — в песочницу он
+уезжает одним файлом. После сборки проверять: `dumpbin /dependents
+dist\ThreatScanner\ThreatAgent.exe` не должен называть `VCRUNTIME`/`MSVCP`.
 
 `Updater` смотрит `releases/latest`: сравнивает версию из тега, качает
 установщик, сверяет размер и SHA-256 и запускает его с `/SILENT`;

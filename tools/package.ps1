@@ -43,6 +43,27 @@ foreach ($f in $programs) { Copy-Item (Join-Path $build $f) $dist }
 # Библиотеки Qt, OpenSSL и зависимости, которые сборка кладёт рядом с exe.
 Get-ChildItem $build -Filter '*.dll' | ForEach-Object { Copy-Item $_.FullName $dist }
 
+# Среда выполнения Visual C++. Программы и Qt собраны с динамической
+# средой, а на чистой Windows её нет: без этих файлов рядом с exe
+# установленная программа не запускается («не найден VCRUNTIME140.dll»).
+# Файлы берутся из папки Redist компилятора — она для того и существует.
+$vswhere = "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe"
+$crt = $null
+if (Test-Path $vswhere) {
+    $vs = & $vswhere -latest -products * -property installationPath
+    $crt = Get-ChildItem (Join-Path $vs 'VC/Redist/MSVC') -Directory -ErrorAction SilentlyContinue |
+           Where-Object { $_.Name -match '^\d+\.\d+\.\d+$' } | Sort-Object { [version]$_.Name } -Descending |
+           ForEach-Object { Join-Path $_.FullName 'x64/Microsoft.VC143.CRT' } |
+           Where-Object { Test-Path $_ } | Select-Object -First 1
+}
+if (-not $crt) { throw 'Visual C++ runtime (VC/Redist/.../x64/Microsoft.VC143.CRT) is not found' }
+Get-ChildItem $crt -Filter '*.dll' |
+    Where-Object { $_.Name -match '^(vcruntime140|msvcp140)' } |
+    ForEach-Object { Copy-Item $_.FullName $dist }
+foreach ($need in 'vcruntime140.dll', 'vcruntime140_1.dll', 'msvcp140.dll', 'msvcp140_1.dll') {
+    if (-not (Test-Path (Join-Path $dist $need))) { throw "Visual C++ runtime file is missing: $need" }
+}
+
 # Плагины Qt: окно, https, SVG.
 $plugins = @{
     'platforms'    = @('qwindows.dll')

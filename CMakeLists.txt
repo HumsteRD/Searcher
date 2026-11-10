@@ -141,6 +141,13 @@ endif()
 add_executable(ThreatAgent tools/threat_agent.cpp)
 target_link_libraries(ThreatAgent PRIVATE ts_behavior)
 
+# Агент уезжает в песочницу одним файлом, а внутри — чистая Windows без
+# библиотек Visual C++: с динамической средой выполнения он там просто не
+# запустится («не найден VCRUNTIME140.dll»). Поэтому среда выполнения
+# вшита в него статически — и в библиотеку, из которой он собран.
+set_property(TARGET ts_behavior ThreatAgent PROPERTY
+    MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+
 # Привилегированный помощник: всё, что требует прав администратора.
 add_executable(ThreatHelper
     tools/threat_helper.cpp
@@ -179,6 +186,9 @@ target_link_libraries(core_selftest PRIVATE ts_scan ts_engine Qt6::Core)
 add_executable(dynmon_test tools/dynmon_test.cpp
     src/core/SandboxEnvironment.cpp src/core/WsbGenerator.cpp)
 target_link_libraries(dynmon_test PRIVATE ts_behavior)
+# Та же среда выполнения, что у ts_behavior: смешивать их в одном exe нельзя.
+set_property(TARGET dynmon_test PROPERTY
+    MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 add_executable(sandbox_test tools/sandbox_test.cpp)
 target_link_libraries(sandbox_test PRIVATE ts_sandbox ts_scan ts_engine)
