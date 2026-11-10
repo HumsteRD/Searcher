@@ -5,6 +5,7 @@ release/
 out/
 *.user
 *.aps
+__pycache__/
 .vs/
 # Базы сигнатур собираются скриптом tools/sigdb/fetch_signatures.py
 res/signatures/*.tsdb
