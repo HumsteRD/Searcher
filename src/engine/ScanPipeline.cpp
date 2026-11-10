@@ -77,15 +77,23 @@ void ScanPipeline::Run(const Config& config, const std::atomic<bool>& cancel,
     FileWalker::Stats walkStats;
     Queue queue(4096);
     std::atomic<bool> walkDone{ false };
-    std::atomic<uint64_t> checked{ 0 }, bytesDone{ 0 };
+    std::atomic<uint64_t> checked{ 0 }, bytesDone{ 0 }, failed{ 0 };
 
     std::mutex currentLock;
     std::wstring current;
 
+    // Пауза: потоки дочитывают текущий файл и ждут. Отмена паузу снимает.
+    auto waitWhilePaused = [&] {
+        while (config.pause && config.pause->load() && !cancel.load()) Sleep(40);
+    };
+
     std::thread walker([&] {
         SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_BELOW_NORMAL);
         FileWalker::Walk(config.roots, config.excludes, cancel, walkStats,
-                         [&](FileWalker::Candidate&& c) { queue.Push(std::move(c), cancel); });
+                         [&](FileWalker::Candidate&& c) {
+                             waitWhilePaused();
+                             queue.Push(std::move(c), cancel);
+                         });
         walkDone.store(true);
         queue.Close();
     });
@@ -95,6 +103,7 @@ void ScanPipeline::Run(const Config& config, const std::atomic<bool>& cancel,
         const int cores = static_cast<int>(std::thread::hardware_concurrency());
         threads = std::clamp(cores - 1, 2, 8);
     }
+    threads = std::clamp(threads, 1, 32);
 
     std::vector<std::thread> workers;
     for (int i = 0; i < threads; ++i) {
@@ -102,13 +111,22 @@ void ScanPipeline::Run(const Config& config, const std::atomic<bool>& cancel,
             SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_BELOW_NORMAL);
             FileWalker::Candidate c;
             while (queue.Pop(c, cancel)) {
+                waitWhilePaused();
+                if (cancel.load()) break;
                 {
                     std::lock_guard<std::mutex> lock(currentLock);
                     current = c.path;
                 }
-                if (!c.sniff || HasExecutableMagic(c.path)) {
-                    const Verdict v = FileAnalyzer::Analyze(c.path, config.analyzer);
-                    if (v.level != Verdict::Clean && onVerdict) onVerdict(c.path, v);
+                // Исключение в одном файле — не повод останавливать поток:
+                // без перехвата оно завершило бы весь процесс.
+                try {
+                    if (!c.sniff || HasExecutableMagic(c.path)) {
+                        const Verdict v = FileAnalyzer::Analyze(c.path, config.analyzer);
+                        if (v.skipped && v.skipReason == "error") ++failed;
+                        if (v.level != Verdict::Clean && onVerdict) onVerdict(c.path, v);
+                    }
+                } catch (...) {
+                    ++failed;
                 }
                 bytesDone += c.size + kPerFileWeight;
                 ++checked;
@@ -122,6 +140,7 @@ void ScanPipeline::Run(const Config& config, const std::atomic<bool>& cancel,
         p.filesSeen    = walkStats.files.load();
         p.candidates   = walkStats.candidates.load();
         p.checked      = checked.load();
+        p.failed       = failed.load();
         p.bytesTotal   = walkStats.candidateBytes.load() + p.candidates * kPerFileWeight;
         p.bytesDone    = bytesDone.load();
         p.walkFinished = walkDone.load();

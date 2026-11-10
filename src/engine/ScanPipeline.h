@@ -19,6 +19,7 @@ public:
         uint64_t filesSeen = 0;        // всего файлов при обходе
         uint64_t candidates = 0;       // отобрано на проверку
         uint64_t checked = 0;          // проверено
+        uint64_t failed = 0;           // не удалось разобрать (сбой на файле)
         uint64_t bytesTotal = 0;       // объём отобранного
         uint64_t bytesDone = 0;
         bool     walkFinished = false; // обход закончен, объём известен
@@ -31,6 +32,8 @@ public:
         std::vector<std::wstring>     excludes;
         FileAnalyzer::Options         analyzer;
         int                           threads = 0;   // 0 — по числу ядер
+        // Пока здесь true, новые файлы не берутся в работу (пауза).
+        const std::atomic<bool>*      pause = nullptr;
     };
 
     using VerdictSink = std::function<void(const std::wstring& path, const Verdict& v)>;

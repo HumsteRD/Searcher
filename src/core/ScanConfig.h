@@ -20,6 +20,7 @@ struct ScanConfig {
     bool extendedRules = false;   // расширенный набор YARA-Forge
     bool reportPua = false;       // показывать хакерские инструменты и PUA
     bool unpackArchives = true;
+    int  threads = 0;             // потоков на проверку файлов, 0 — по числу ядер
 
     std::vector<std::wstring> excludedPaths;   // пользовательские исключения
     std::vector<std::string>  allowedHashes;   // SHA-256, которым пользователь доверяет

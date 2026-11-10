@@ -43,6 +43,13 @@ bool IsInertExtension(const std::string& ext) {
     return kInert.count(ext) > 0;
 }
 
+// Отрезок [offset, offset + length) целиком внутри буфера из total байт.
+// Смещения и длины приходят из файла и бывают любыми: складывать их
+// напрямую нельзя — сумма переполняется и «проходит» проверку.
+bool Fits(uint64_t offset, uint64_t length, uint64_t total) {
+    return offset <= total && length <= total - offset;
+}
+
 // ───────────────────────────── ZIP ─────────────────────────────
 
 bool ExtractZip(const uint8_t* d, size_t n, const Limits& lim, Result& r) {
@@ -66,7 +73,7 @@ bool ExtractZip(const uint8_t* d, size_t n, const Limits& lim, Result& r) {
         const uint8_t* loc = d + eocd - 20;
         if (Le32(loc) == 0x07064b50) {
             const uint64_t z64 = Le64(loc + 8);
-            if (z64 + 56 <= n && Le32(d + z64) == 0x06064b50) {
+            if (Fits(z64, 56, n) && Le32(d + z64) == 0x06064b50) {
                 total    = Le64(d + z64 + 32);
                 cdSize   = Le64(d + z64 + 40);
                 cdOffset = Le64(d + z64 + 48);
@@ -77,11 +84,11 @@ bool ExtractZip(const uint8_t* d, size_t n, const Limits& lim, Result& r) {
     // Архив, приклеенный к чему-то (самораспаковывающийся): смещения
     // считаются от начала архива, а не файла — поправку вычисляем так же,
     // как это делает unzip.
-    int64_t shift = 0;
-    if (cdOffset + cdSize < eocd) shift = static_cast<int64_t>(eocd - (cdOffset + cdSize));
+    uint64_t shift = 0;
+    if (cdSize < eocd && cdOffset < eocd - cdSize) shift = eocd - cdSize - cdOffset;
 
+    if (cdOffset >= n || shift >= n - cdOffset) return false;
     uint64_t pos = cdOffset + shift;
-    if (pos >= n) return false;
 
     r.container = "zip";
     size_t extracted = 0;
@@ -131,14 +138,21 @@ bool ExtractZip(const uint8_t* d, size_t n, const Limits& lim, Result& r) {
             continue;
         }
 
+        if (lho >= n || shift >= n - lho) { ++r.skipped; continue; }
         const uint64_t local = lho + shift;
-        if (local + 30 > n || Le32(d + local) != 0x04034b50) { ++r.skipped; continue; }
+        if (!Fits(local, 30, n) || Le32(d + local) != 0x04034b50) { ++r.skipped; continue; }
         const uint64_t dataAt = local + 30 + Le16(d + local + 26) + Le16(d + local + 28);
-        if (dataAt + compSize > n) { ++r.skipped; continue; }
+        if (!Fits(dataAt, compSize, n)) { ++r.skipped; continue; }
 
         Item item;
         item.name = name;
         if (method == 0) {
+            // Несжатая запись: настоящий объём — compSize, а заявленному
+            // uncompSize верить нельзя.
+            if (compSize > lim.maxItemSize || extracted + compSize > lim.maxTotalSize) {
+                ++r.skipped;
+                continue;
+            }
             item.data.assign(d + dataAt, d + dataAt + compSize);
         } else if (!Inflate(d + dataAt, static_cast<size_t>(compSize), true,
                             static_cast<size_t>(uncompSize), lim.maxItemSize, item.data)) {
@@ -160,6 +174,7 @@ struct MValue {
     int64_t             i = 0;
     std::string         s;
     std::vector<MValue> items;
+    size_t              weight = 1;   // число узлов вместе с вложенными
 };
 
 class Marshal {
@@ -168,6 +183,10 @@ public:
 
     bool Read(MValue& out, int depth = 0) {
         if (depth > 16 || p_ >= n_) return false;
+        // Предел на число узлов: ссылка 'r' копирует значение целиком, и
+        // список из ссылок на большой список раздувается в гигабайты из
+        // нескольких килобайт данных.
+        if (++nodes_ > kMaxNodes) return false;
         const uint8_t raw = d_[p_++];
         const bool addRef = (raw & 0x80) != 0;
         const char type = static_cast<char>(raw & 0x7F);
@@ -196,11 +215,15 @@ public:
             size_t count = 0;
             if (type == ')') { if (p_ + 1 > n_) return false; count = d_[p_++]; }
             else { if (p_ + 4 > n_) return false; count = Le32(d_ + p_); p_ += 4; }
-            if (count > 200000) return false;
+            // Каждый элемент занимает хотя бы байт: больше, чем осталось
+            // данных, элементов быть не может.
+            if (count > 200000 || count > n_ - p_) return false;
             out.kind = MValue::Seq;
             out.items.resize(count);
-            for (size_t k = 0; k < count; ++k)
+            for (size_t k = 0; k < count; ++k) {
                 if (!Read(out.items[k], depth + 1)) return false;
+                out.weight += out.items[k].weight;
+            }
             break;
         }
         case '{': {
@@ -212,6 +235,8 @@ public:
                 MValue key, value;
                 if (!Read(key, depth + 1) || !Read(value, depth + 1)) return false;
                 MValue pair; pair.kind = MValue::Seq;
+                pair.weight = 1 + key.weight + value.weight;
+                out.weight += pair.weight;
                 pair.items.push_back(std::move(key));
                 pair.items.push_back(std::move(value));
                 out.items.push_back(std::move(pair));
@@ -222,6 +247,8 @@ public:
             if (p_ + 4 > n_) return false;
             const size_t idx = Le32(d_ + p_); p_ += 4;
             if (idx >= refs_.size()) return false;
+            nodes_ += refs_[idx].weight;
+            if (nodes_ > kMaxNodes) return false;
             out = refs_[idx];
             break;
         }
@@ -241,9 +268,12 @@ private:
         return true;
     }
 
+    static constexpr size_t kMaxNodes = 500000;
+
     const uint8_t*      d_;
     size_t              n_;
     size_t              p_ = 0;
+    size_t              nodes_ = 0;
     std::vector<MValue> refs_;
 };
 
@@ -318,6 +348,11 @@ void ExtractPyz(const uint8_t* d, size_t n, const Limits& lim, size_t& total, Re
 bool ExtractPyInstaller(const uint8_t* d, size_t n, const Limits& lim, Result& r) {
     static const uint8_t kMagic[8] = { 'M', 'E', 'I', 0x0C, 0x0B, 0x0A, 0x0B, 0x0E };
 
+    // Короче самой метки — искать негде. Без этой проверки счётчик ниже
+    // уходил за ноль и чтение шло мимо буфера: файл из пяти байт «MZ…»
+    // ронял проверку.
+    if (n < 24) return false;
+
     // Метка лежит в конце архива, но за ней может идти подпись Authenticode,
     // поэтому ищем в последнем мегабайте.
     const size_t window = std::min<size_t>(n, 1u << 20);
@@ -375,6 +410,10 @@ bool ExtractPyInstaller(const uint8_t* d, size_t n, const Limits& lim, Result& r
                         continue;
                     }
                 } else {
+                    if (csize > lim.maxItemSize || csize > lim.maxTotalSize - total) {
+                        ++r.skipped;
+                        continue;
+                    }
                     item.data.assign(data, data + csize);
                 }
                 total += item.data.size();

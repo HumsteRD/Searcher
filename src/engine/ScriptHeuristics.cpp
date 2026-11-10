@@ -156,9 +156,26 @@ Result Analyze(const uint8_t* data, size_t size, const std::wstring& ext, const 
         r.score += rule.weight;
     }
 
+    // Скачать, раскодировать, выполнить, запустить программу — сами по
+    // себе это приёмы любого установщика: так ставят Chocolatey из Node.js
+    // (install_tools.bat) и vcpkg из Visual Studio (vcpkg-init.cmd), и оба
+    // набирали порог на одной связке «скачать + выполнить». Подозрительным
+    // сценарий делает то, что к этому добавлено: спрятаться, закрепиться,
+    // тронуть защиту, украсть, уничтожить. Без такого признака сумма
+    // остаётся ниже порога, сколько бы «нейтральных» приёмов ни набралось.
+    static const char* kNeutral[] = {
+        "script.download-exec", "script.download", "script.drop-file",
+        "script.dynamic-code", "script.base64", "script.shell",
+    };
+    const bool onlyNeutral = std::all_of(r.rules.begin(), r.rules.end(), [](const std::string& code) {
+        return std::any_of(std::begin(kNeutral), std::end(kNeutral),
+                           [&](const char* n) { return code == n; });
+    });
+    if (onlyNeutral && r.score >= kSuspicious) r.score = kSuspicious - 1;
+
     // Запутанный текст — не улика сам по себе (так выглядит любой
     // минифицированный код), только усиление уже найденного.
-    if (r.score >= 6) {
+    if (r.score >= 6 && !onlyNeutral) {
         size_t pos = 0;
         while (pos < text.size()) {
             size_t end = text.find('\n', pos);

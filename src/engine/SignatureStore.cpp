@@ -41,8 +41,8 @@ std::vector<fs::path> HashDatabaseFiles() {
     const fs::path installed = InstallDir() / L"base.tsdb";
     const fs::path updated   = UpdateDir() / L"base.tsdb";
     uint32_t si = 0, su = 0;
-    const bool hasInstalled = fs::exists(installed, ec) && HashDatabase::Validate(installed, &si);
-    const bool hasUpdated   = fs::exists(updated, ec) && HashDatabase::Validate(updated, &su);
+    const bool hasInstalled = fs::exists(installed, ec) && HashDatabase::ReadHeader(installed, &si);
+    const bool hasUpdated   = fs::exists(updated, ec) && HashDatabase::ReadHeader(updated, &su);
     if (hasUpdated && (!hasInstalled || su >= si)) out.push_back(updated);
     else if (hasInstalled) out.push_back(installed);
 

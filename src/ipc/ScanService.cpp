@@ -63,6 +63,7 @@ ScanConfig ScanService::ConfigFromArgs(const QJsonObject& args) {
     c.extendedRules  = args["extendedRules"].toBool(false);
     c.reportPua      = args["reportPua"].toBool(false);
     c.unpackArchives = args["unpackArchives"].toBool(true);
+    c.threads        = std::clamp(args["threads"].toInt(0), 0, 32);
     c.excludedPaths  = WideList(args["excludedPaths"]);
     for (const auto& h : args["allowedHashes"].toArray())
         c.allowedHashes.push_back(h.toString().toLower().toStdString());
@@ -86,6 +87,7 @@ bool ScanService::Handle(const QString& command, const QJsonObject& args,
         lastTotal_ = lastCritical_ = -1;
         lastObjects_ = -1;
         lastPercent_ = -2;
+        lastPaused_ = false;
         lastStage_.clear();
         lastStatuses_.clear();
 
@@ -95,6 +97,12 @@ bool ScanService::Handle(const QString& command, const QJsonObject& args,
 
     if (command == kCmdCancelScan) {
         scanner_.Cancel();
+        return true;
+    }
+
+    if (command == kCmdPauseScan) {
+        scanner_.SetPaused(args["paused"].toBool(true));
+        (*result)["paused"] = scanner_.Paused();
         return true;
     }
 
@@ -129,6 +137,8 @@ bool ScanService::Handle(const QString& command, const QJsonObject& args,
             : Quarantine::Instance().DeletePermanently(id);
 
         (*result)["success"] = done;
+        if (done && command == kCmdQuarantineRestore)
+            (*result)["path"] = FromWide(Quarantine::Instance().LastRestoredPath());
         if (!done) *error = "the quarantine store refused the operation";
         return true;
     }
@@ -217,13 +227,16 @@ void ScanService::PollOnce() {
         server_.SendEvent(kEventDetail, payload);
     }
 
-    if (stats.progressPercent != lastPercent_ || stats.currentStage != lastStage_) {
+    if (stats.progressPercent != lastPercent_ || stats.currentStage != lastStage_ ||
+        stats.paused != lastPaused_) {
         lastPercent_ = stats.progressPercent;
         lastStage_   = stats.currentStage;
+        lastPaused_  = stats.paused;
         QJsonObject payload;
         payload["percent"] = stats.progressPercent;
         payload["stage"]   = QString::fromStdString(stats.currentStage);
         payload["cancelled"] = stats.cancelled;
+        payload["paused"]  = stats.paused;
         server_.SendEvent(kEventProgress, payload);
     }
 

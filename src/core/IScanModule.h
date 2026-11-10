@@ -8,8 +8,12 @@
 
 struct CancelToken {
     std::atomic<bool> requested{ false };
+    // Пауза: модуль дочитывает текущий объект и ждёт. Отмена её снимает.
+    std::atomic<bool> paused{ false };
+
     bool IsCancelled() const noexcept { return requested.load(); }
     void Cancel() noexcept { requested.store(true); }
+    bool IsPaused() const noexcept { return paused.load(); }
 };
 
 class IScanModule {

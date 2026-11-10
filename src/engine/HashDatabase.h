@@ -1,7 +1,7 @@
 #pragma once
 
 #include <cstdint>
-#include <mutex>
+#include <shared_mutex>
 #include <string>
 #include <vector>
 #include <filesystem>
@@ -34,7 +34,13 @@ public:
     size_t   Count() const;
     uint32_t NewestStamp() const;   // yyyymmdd самой свежей базы, 0 — баз нет
 
-    // Загрузить один файл. false — файл не читается или не того формата.
+    // Заголовок файла базы: метка и число записей, с проверкой длины файла.
+    // Дёшево — для выбора между копиями базы при запуске.
+    static bool ReadHeader(const std::filesystem::path& file, uint32_t* stamp = nullptr,
+                           uint32_t* count = nullptr);
+
+    // Загрузить один файл целиком. false — файл не читается или не того
+    // формата. Для скачанного обновления, прежде чем оно заменит рабочее.
     static bool Validate(const std::filesystem::path& file, uint32_t* stamp = nullptr,
                          uint32_t* count = nullptr);
 
@@ -58,6 +64,9 @@ private:
 
     static bool LoadFile(const std::filesystem::path& file, Table& out);
 
-    mutable std::mutex   mutex_;
+    // Поиск идёт из всех потоков проверки разом, запись — только при
+    // перезагрузке баз: читатели друг другу не мешают.
+    mutable std::shared_mutex mutex_;
     std::vector<Table>   tables_;
+    std::wstring         fingerprint_;   // пути, размеры и даты загруженных файлов
 };

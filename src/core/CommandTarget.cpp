@@ -144,14 +144,40 @@ Parsed Parse(const std::wstring& commandLine) {
     return r;
 }
 
+namespace {
+
+// Ключ -EncodedCommand в любом допустимом сокращении (-e, -ec, -enc,
+// -enco…), за которым идёт сама команда в Base64. Поиск подстроки «-enc»
+// цеплял и «-Encoding UTF8» у обычных сценариев — отсюда разбор по словам.
+bool HasEncodedCommand(const std::wstring& lower) {
+    static const std::wstring full = L"encodedcommand";
+    const std::vector<std::wstring> tokens = SplitArgs(lower);
+    for (size_t i = 0; i + 1 < tokens.size(); ++i) {
+        const std::wstring& t = tokens[i];
+        if (t.size() < 2 || (t[0] != L'-' && t[0] != L'/')) continue;
+        const std::wstring name = t.substr(1);
+        const bool isKey = name == L"ec" || (name.size() <= full.size() && full.compare(0, name.size(), name) == 0);
+        if (!isKey) continue;
+
+        const std::wstring& value = tokens[i + 1];
+        if (value.size() < 16) continue;
+        const bool base64 = std::all_of(value.begin(), value.end(), [](wchar_t ch) {
+            return (ch >= L'a' && ch <= L'z') || (ch >= L'0' && ch <= L'9') || ch == L'+' || ch == L'/' || ch == L'=';
+        });
+        if (base64) return true;
+    }
+    return false;
+}
+
+} // namespace
+
 std::vector<std::string> AbuseReasons(const std::wstring& commandLine) {
     std::vector<std::string> out;
     const std::wstring c = Lower(commandLine);
     auto has = [&](const wchar_t* s) { return c.find(s) != std::wstring::npos; };
     const bool powershell = has(L"powershell") || has(L"pwsh");
 
-    if (powershell && (has(L" -enc") || has(L" -e ") || has(L"-encodedcommand") ||
-                       has(L"frombase64string")))
+    if (powershell && (HasEncodedCommand(c) || has(L"frombase64string")))
         out.push_back("cmd.encoded");
     if (powershell && (has(L"downloadstring") || has(L"downloadfile") || has(L"net.webclient") ||
                        has(L"invoke-webrequest") || has(L"iwr ") || has(L"start-bitstransfer") ||

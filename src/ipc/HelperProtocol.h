@@ -16,7 +16,7 @@ namespace Ipc {
 // Версия протокола. Помощник и интерфейс лежат рядом и обновляются
 // вместе, но проверка рукопожатия стоит дёшево, а рассинхрон после
 // частичного обновления ловится сразу и понятно.
-inline constexpr int kProtocolVersion = 2;
+inline constexpr int kProtocolVersion = 3;   // 3: пауза проверки, число потоков
 
 // Поля сообщения.
 inline constexpr const char* kFieldId      = "id";
@@ -33,6 +33,8 @@ inline constexpr const char* kCmdShutdown = "shutdown";
 
 inline constexpr const char* kCmdStartScan   = "start_scan";
 inline constexpr const char* kCmdCancelScan  = "cancel_scan";
+// Приостановить и продолжить идущую проверку: args.paused — true/false.
+inline constexpr const char* kCmdPauseScan   = "pause_scan";
 inline constexpr const char* kCmdApplyAction = "apply_action";
 inline constexpr const char* kCmdAddThreat   = "add_threat";
 

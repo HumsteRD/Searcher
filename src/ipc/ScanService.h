@@ -51,6 +51,7 @@ private:
     int       lastCritical_ = -1;
     long long lastObjects_ = -1;
     int       lastPercent_ = -1;
+    bool      lastPaused_ = false;
     std::string lastStage_;
     std::wstring lastItem_;
     std::vector<int> lastStatuses_;

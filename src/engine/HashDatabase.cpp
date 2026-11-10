@@ -96,6 +96,37 @@ bool HashDatabase::LoadFile(const fs::path& file, Table& out) {
     return true;
 }
 
+bool HashDatabase::ReadHeader(const fs::path& file, uint32_t* stamp, uint32_t* count) {
+    std::ifstream in(file, std::ios::binary);
+    if (!in) return false;
+
+    char magic[8] = {};
+    if (!in.read(magic, 8) || std::memcmp(magic, kMagic, 8) != 0) return false;
+
+    uint32_t s = 0, n = 0, families = 0;
+    if (!ReadPod(in, s) || !ReadPod(in, n) || !ReadPod(in, families)) return false;
+    if (n > 10'000'000 || families > 65535) return false;
+
+    // Таблица имён — переменной длины; проходим её, чтобы узнать, где
+    // начинаются ключи, и сверить длину файла: обрезанная при скачивании
+    // база отсеивается здесь, без чтения десяти мегабайт.
+    uint64_t offset = 8 + 12;
+    for (uint32_t i = 0; i < families; ++i) {
+        uint8_t len = 0;
+        if (!ReadPod(in, len)) return false;
+        if (len && !in.seekg(len, std::ios::cur)) return false;
+        offset += 1 + len;
+    }
+    std::error_code ec;
+    const uint64_t size = fs::file_size(file, ec);
+    if (ec || size != offset + static_cast<uint64_t>(n) * (sizeof(uint64_t) + sizeof(uint16_t)))
+        return false;
+
+    if (stamp) *stamp = s;
+    if (count) *count = n;
+    return true;
+}
+
 bool HashDatabase::Validate(const fs::path& file, uint32_t* stamp, uint32_t* count) {
     Table t;
     if (!LoadFile(file, t)) return false;
@@ -105,8 +136,23 @@ bool HashDatabase::Validate(const fs::path& file, uint32_t* stamp, uint32_t* cou
 }
 
 void HashDatabase::Reload() {
+    // Те же файлы, что уже в памяти, заново не читаем: Reload зовётся в
+    // начале каждой проверки, а базы меняются раз в сутки. Раньше первая
+    // проверка читала десять мегабайт дважды подряд.
+    const std::vector<fs::path> files = SignatureStore::HashDatabaseFiles();
+    std::wstring fingerprint;
+    {
+        std::error_code ec;
+        for (const fs::path& file : files) {
+            fingerprint += file.wstring() + L"|" + std::to_wstring(fs::file_size(file, ec)) + L"|" +
+                           std::to_wstring(fs::last_write_time(file, ec).time_since_epoch().count()) + L";";
+        }
+        std::shared_lock lock(mutex_);
+        if (!tables_.empty() && fingerprint == fingerprint_) return;
+    }
+
     std::vector<Table> loaded;
-    for (const fs::path& file : SignatureStore::HashDatabaseFiles()) {
+    for (const fs::path& file : files) {
         Table t;
         if (LoadFile(file, t)) {
             Logger::Instance().Info("[HashDB] " + file.filename().string() + ": " +
@@ -118,15 +164,16 @@ void HashDatabase::Reload() {
                                     file.filename().string());
         }
     }
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::unique_lock lock(mutex_);
     tables_.swap(loaded);
+    fingerprint_ = std::move(fingerprint);
 }
 
 HashDatabase::Match HashDatabase::Lookup(const std::string& sha256Hex) const {
     uint64_t key = 0;
     if (!KeyFromHexImpl(sha256Hex, key)) return {};
 
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::shared_lock lock(mutex_);
     for (const Table& t : tables_) {
         auto it = std::lower_bound(t.keys.begin(), t.keys.end(), key);
         if (it == t.keys.end() || *it != key) continue;
@@ -152,14 +199,14 @@ HashDatabase::Match HashDatabase::Lookup(const uint8_t digest[32]) const {
 }
 
 size_t HashDatabase::Count() const {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::shared_lock lock(mutex_);
     size_t n = 0;
     for (const Table& t : tables_) n += t.keys.size();
     return n;
 }
 
 uint32_t HashDatabase::NewestStamp() const {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::shared_lock lock(mutex_);
     uint32_t s = 0;
     for (const Table& t : tables_) s = std::max(s, t.stamp);
     return s;

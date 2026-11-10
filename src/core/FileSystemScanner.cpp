@@ -6,6 +6,7 @@
 #include "../engine/ScanPipeline.h"
 
 #include <algorithm>
+#include <atomic>
 
 void FileSystemScanner::Scan(IReportSink& sink, CancelToken& cancel, const ScanConfig& config) {
     ScanPipeline::Config pc;
@@ -17,10 +18,14 @@ void FileSystemScanner::Scan(IReportSink& sink, CancelToken& cancel, const ScanC
     pc.excludes = config.excludedPaths;
     pc.analyzer.reportPua = config.reportPua;
     pc.analyzer.unpack    = config.unpackArchives;
+    pc.threads            = config.threads;
+    pc.pause              = &cancel.paused;
 
     Logger::Instance().Info("[Files] " + std::to_string(pc.roots.size()) + " locations to check");
 
-    long long reported = 0;
+    // Находки приходят из нескольких потоков разом.
+    std::atomic<long long> reported{ 0 };
+    uint64_t failed = 0;
     ScanPipeline::Run(pc, cancel.requested,
         [&](const std::wstring& path, const Verdict& v) {
             if (config.IsAllowedHash(v.sha256)) {
@@ -47,7 +52,12 @@ void FileSystemScanner::Scan(IReportSink& sink, CancelToken& cancel, const ScanC
             if (!p.current.empty()) sink.Item(p.current);
             sink.Checked(static_cast<long long>(p.checked));
             sink.Progress("Files", p.walkFinished ? p.percent : -1);
+            failed = p.failed;
         });
 
-    Logger::Instance().Info("[Files] done, findings: " + std::to_string(reported));
+    if (failed) {
+        Logger::Instance().Warn("[Files] could not analyze " + std::to_string(failed) +
+                                " damaged or oversized files; they were skipped");
+    }
+    Logger::Instance().Info("[Files] done, findings: " + std::to_string(reported.load()));
 }

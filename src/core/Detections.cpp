@@ -71,6 +71,7 @@ void FillFromVerdict(Threat& t, const Verdict& v) {
             t.reasons.push_back("eicar");
         }
     }
+    if (!v.origin.empty()) t.reasons.push_back(Reason({ "origin", v.origin }));
     if (!v.container.empty()) t.reasons.push_back(Reason({ "container", v.container }));
     if (v.signedValid && !v.signer.empty()) t.reasons.push_back(Reason({ "signed", Utf8(v.signer) }));
 }

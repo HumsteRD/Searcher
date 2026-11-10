@@ -139,9 +139,11 @@ void CollectWinlogon(std::vector<Entry>& out) {
             const std::wstring userinit = ReadString(root, sub, L"Userinit", RRF_SUBKEY_WOW6464KEY);
             std::wstring low = Lower(userinit);
             while (!low.empty() && (low.back() == L',' || low.back() == L' ')) low.pop_back();
-            if (!low.empty() && low != L"c:\\windows\\system32\\userinit.exe" &&
-                low != L"userinit.exe")
-            {
+            // Системный каталог берём у Windows: она не обязана стоять на C:.
+            wchar_t sysDir[MAX_PATH] = {};
+            GetSystemDirectoryW(sysDir, MAX_PATH);
+            const std::wstring standard = Lower(std::wstring(sysDir) + L"\\userinit.exe");
+            if (!low.empty() && low != standard && low != L"userinit.exe") {
                 Entry e;
                 e.location = RootName(root) + L"\\" + sub;
                 e.name = L"Userinit";

@@ -31,6 +31,7 @@ struct ScanStats {
     int          elapsedMs = 0;
     int          etaMs = -1;        // -1 — оценить пока нельзя
     bool         cancelled = false;
+    bool         paused = false;
 };
 
 class Scanner : public IReportSink {
@@ -44,6 +45,11 @@ public:
     // и запустить проверку в рабочем потоке.
     void Start(const ScanConfig& config);
     void Cancel();
+
+    // Пауза: проверка дочитывает текущие файлы и ждёт. Время на паузе
+    // в длительность и в оценку остатка не входит.
+    void SetPaused(bool paused);
+    bool Paused() const { return cancel_.IsPaused(); }
 
     ScanState           State() const { return state_.load(); }
     ScanStats           Stats();
@@ -79,4 +85,9 @@ private:
     long long checkedBefore_ = 0;    // проверено законченными модулями
     long long checkedCurrent_ = 0;
     std::chrono::steady_clock::time_point startedAt_;
+    std::chrono::steady_clock::time_point pausedAt_;
+    std::chrono::steady_clock::duration   pausedTotal_{};
+
+    // Прошло с начала проверки без учёта пауз. Зовётся под mutex_.
+    int ElapsedMsLocked() const;
 };

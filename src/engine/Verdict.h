@@ -54,7 +54,8 @@ struct Verdict {
     bool         trustedVendor = false;
     std::string  container;             // "zip", "pyinstaller"
     uint64_t     size = 0;
+    std::string  origin;                // адрес, с которого файл скачан (только у находок)
 
     bool         skipped = false;       // файл не проверялся
-    std::string  skipReason;            // "too-large", "unreadable", "empty"
+    std::string  skipReason;            // "unreadable", "empty", "error"
 };

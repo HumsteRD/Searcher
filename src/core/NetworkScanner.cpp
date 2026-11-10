@@ -10,6 +10,7 @@
 #include <Windows.h>
 #include <iphlpapi.h>
 
+#include <map>
 #include <memory>
 #include <mutex>
 #include <thread>
@@ -50,30 +51,72 @@ std::string Ip6(const UCHAR* addr) {
     return buf;
 }
 
+// Адрес, который не может быть сервером пула: петля, частные и служебные
+// диапазоны. Фильтрующий DNS (AdGuard, Pi-hole, NextDNS, роутер с
+// блокировкой) отвечает на имена пулов заглушкой — 127.0.0.1, 0.0.0.0
+// или адресом своей страницы. Без этой проверки любая программа с
+// соединением на такой адрес объявлялась бы майнером.
+bool IsPublicAddress(const addrinfo* p) {
+    if (p->ai_family == AF_INET) {
+        const uint32_t a = ntohl(reinterpret_cast<const sockaddr_in*>(p->ai_addr)->sin_addr.S_un.S_addr);
+        const uint32_t b1 = a >> 24, b2 = (a >> 16) & 0xFF;
+        if (b1 == 0 || b1 == 10 || b1 == 127 || b1 >= 224) return false;
+        if (b1 == 100 && b2 >= 64 && b2 <= 127) return false;    // CGNAT
+        if (b1 == 169 && b2 == 254) return false;                // link-local
+        if (b1 == 172 && b2 >= 16 && b2 <= 31) return false;
+        if (b1 == 192 && b2 == 168) return false;
+        if (b1 == 198 && (b2 == 18 || b2 == 19)) return false;   // подставные адреса прокси
+        return true;
+    }
+    if (p->ai_family == AF_INET6) {
+        const UCHAR* b = reinterpret_cast<const sockaddr_in6*>(p->ai_addr)->sin6_addr.u.Byte;
+        bool zero = true;
+        for (int i = 0; i < 15; ++i) zero = zero && b[i] == 0;
+        if (zero && b[15] <= 1) return false;                    // :: и ::1
+        if ((b[0] & 0xFE) == 0xFC) return false;                 // fc00::/7
+        if (b[0] == 0xFE && (b[1] & 0xC0) == 0x80) return false; // fe80::/10
+        if (b[0] == 0xFF) return false;
+        return true;
+    }
+    return false;
+}
+
 // Адреса пулов на момент проверки. Разрешение имён идёт в отдельных
 // потоках с ограничением по времени: недоступный DNS не должен вешать
 // проверку. Опоздавшие потоки дорабатывают сами и пишут в общий объект,
 // который живёт, пока жив последний из них.
 std::set<std::string> ResolvePools() {
-    WSADATA wsa{};
-    WSAStartup(MAKEWORD(2, 2), &wsa);
+    // Сокеты нужны и опоздавшим потокам, поэтому парная WSACleanup не
+    // зовётся; сама инициализация — один раз на процесс, а не на проверку.
+    static const bool winsock = [] {
+        WSADATA wsa{};
+        return WSAStartup(MAKEWORD(2, 2), &wsa) == 0;
+    }();
+    if (!winsock) return {};
 
     struct Shared {
-        std::mutex            lock;
-        std::set<std::string> ips;
-        int                   pending = 0;
+        std::mutex                                   lock;
+        std::map<std::string, std::set<std::string>> owners;   // адрес → чьи это пулы
+        int                                          pending = 0;
     };
     auto shared = std::make_shared<Shared>();
     shared->pending = static_cast<int>(std::size(kPools));
 
     for (const char* host : kPools) {
         std::thread([shared, host] {
+            // Владелец пула — два последних уровня имени (nanopool.org).
+            std::string owner = host;
+            const size_t last = owner.rfind('.');
+            const size_t prev = last == std::string::npos ? last : owner.rfind('.', last - 1);
+            if (prev != std::string::npos) owner = owner.substr(prev + 1);
+
             addrinfo hints{};
             hints.ai_family = AF_UNSPEC;
             addrinfo* res = nullptr;
             std::vector<std::string> found;
             if (getaddrinfo(host, nullptr, &hints, &res) == 0) {
                 for (addrinfo* p = res; p; p = p->ai_next) {
+                    if (!IsPublicAddress(p)) continue;
                     char buf[INET6_ADDRSTRLEN] = {};
                     if (p->ai_family == AF_INET)
                         inet_ntop(AF_INET, &reinterpret_cast<sockaddr_in*>(p->ai_addr)->sin_addr, buf, sizeof(buf));
@@ -84,7 +127,7 @@ std::set<std::string> ResolvePools() {
                 freeaddrinfo(res);
             }
             std::lock_guard<std::mutex> lock(shared->lock);
-            shared->ips.insert(found.begin(), found.end());
+            for (const std::string& ip : found) shared->owners[ip].insert(owner);
             --shared->pending;
         }).detach();
     }
@@ -97,8 +140,15 @@ std::set<std::string> ResolvePools() {
         }
         Sleep(50);
     }
+
+    // Один адрес сразу у трёх разных владельцев — это не пул, а заглушка:
+    // так выглядит DNS, который на все заблокированные имена отдаёт адрес
+    // своей страницы.
+    std::set<std::string> ips;
     std::lock_guard<std::mutex> lock(shared->lock);
-    return shared->ips;
+    for (const auto& [ip, owners] : shared->owners)
+        if (owners.size() < 3) ips.insert(ip);
+    return ips;
 }
 
 struct Conn {

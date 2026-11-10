@@ -6,7 +6,7 @@ endif()
 
 # Версия приложения — единственное место. Отсюда она попадает в код
 # (проверка обновлений), в ресурсы exe и в установщик.
-project(ThreatScanner VERSION 2.0.0 LANGUAGES CXX)
+project(ThreatScanner VERSION 2.1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -173,6 +173,9 @@ target_link_libraries(engine_selftest PRIVATE ts_engine)
 add_executable(scan_cli tools/scan_cli.cpp)
 target_link_libraries(scan_cli PRIVATE ts_scan ts_engine Qt6::Core)
 
+add_executable(core_selftest tools/core_selftest.cpp)
+target_link_libraries(core_selftest PRIVATE ts_scan ts_engine Qt6::Core)
+
 add_executable(dynmon_test tools/dynmon_test.cpp
     src/core/SandboxEnvironment.cpp src/core/WsbGenerator.cpp)
 target_link_libraries(dynmon_test PRIVATE ts_behavior)
@@ -185,7 +188,7 @@ add_executable(ipc_test tools/ipc_test.cpp
 set_target_properties(ipc_test PROPERTIES AUTOMOC ON)
 target_link_libraries(ipc_test PRIVATE ts_engine Qt6::Core)
 
-foreach(T ThreatAgent ThreatHelper ThreatService engine_scan engine_selftest scan_cli dynmon_test sandbox_test ipc_test)
+foreach(T ThreatAgent ThreatHelper ThreatService engine_scan engine_selftest scan_cli core_selftest dynmon_test sandbox_test ipc_test)
     target_include_directories(${T} PRIVATE src)
     target_compile_definitions(${T} PRIVATE ${TS_DEFINES})
 endforeach()

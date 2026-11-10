@@ -10,6 +10,7 @@
 #include <bcrypt.h>
 
 #include <algorithm>
+#include <cstring>
 #include <cwctype>
 #include <mutex>
 #include <unordered_map>
@@ -431,13 +432,74 @@ bool IsDeceptiveName(const std::wstring& fileName, std::string* why) {
     return false;
 }
 
+namespace {
+
+// Дескриптор закрывается на любом пути выхода, в том числе по исключению.
+struct FileHandle {
+    HANDLE h = INVALID_HANDLE_VALUE;
+    ~FileHandle() { if (h != INVALID_HANDLE_VALUE) CloseHandle(h); }
+};
+
+// Откуда файл скачан: браузеры и почтовые программы записывают адрес в
+// поток Zone.Identifier («метка из интернета»). Для находки это ответ на
+// первый вопрос пользователя — «откуда это у меня».
+std::string DownloadOrigin(const std::wstring& path) {
+    HANDLE h = CreateFileW((path + L":Zone.Identifier").c_str(), GENERIC_READ,
+                           FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr,
+                           OPEN_EXISTING, 0, nullptr);
+    if (h == INVALID_HANDLE_VALUE) return {};
+    char buf[4096];
+    DWORD got = 0;
+    const BOOL ok = ReadFile(h, buf, sizeof(buf), &got, nullptr);
+    CloseHandle(h);
+    if (!ok || got == 0) return {};
+
+    const std::string text(buf, got);
+    for (const char* key : { "HostUrl=", "ReferrerUrl=" }) {
+        const size_t at = text.find(key);
+        if (at == std::string::npos) continue;
+        std::string url;
+        for (size_t i = at + std::strlen(key); i < text.size() && url.size() < 300; ++i) {
+            const unsigned char c = static_cast<unsigned char>(text[i]);
+            if (c < 0x21 || c > 0x7E) break;   // до конца строки; только печатный ASCII
+            url += static_cast<char>(c);
+        }
+        // «about:internet» пишут, когда адреса нет: только зона.
+        if (url.rfind("http://", 0) == 0 || url.rfind("https://", 0) == 0 || url.rfind("ftp://", 0) == 0)
+            return url;
+    }
+    return {};
+}
+
+Verdict AnalyzeUnguarded(const std::wstring& path, const Options& opt);
+
+} // namespace
+
 Verdict Analyze(const std::wstring& path, const Options& opt) {
+    // Проверка не должна падать на файле, который для того и собран, чтобы
+    // её уронить: битый архив, нехватка памяти на распаковке. Такой файл
+    // помечается непроверенным, проверка идёт дальше.
+    try {
+        return AnalyzeUnguarded(path, opt);
+    } catch (...) {
+        Verdict v;
+        v.skipped = true;
+        v.skipReason = "error";
+        return v;
+    }
+}
+
+namespace {
+
+Verdict AnalyzeUnguarded(const std::wstring& path, const Options& opt) {
     Verdict v;
 
-    HANDLE file = CreateFileW(path.c_str(), GENERIC_READ,
-                              FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr,
-                              OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN | FILE_FLAG_BACKUP_SEMANTICS,
-                              nullptr);
+    FileHandle guard;
+    guard.h = CreateFileW(path.c_str(), GENERIC_READ,
+                          FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr,
+                          OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN | FILE_FLAG_BACKUP_SEMANTICS,
+                          nullptr);
+    const HANDLE file = guard.h;
     if (file == INVALID_HANDLE_VALUE) {
         v.skipped = true;
         v.skipReason = "unreadable";
@@ -445,7 +507,11 @@ Verdict Analyze(const std::wstring& path, const Options& opt) {
     }
 
     BY_HANDLE_FILE_INFORMATION info{};
-    GetFileInformationByHandle(file, &info);
+    if (!GetFileInformationByHandle(file, &info) || (info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+        v.skipped = true;
+        v.skipReason = "unreadable";
+        return v;
+    }
     const uint64_t size = (static_cast<uint64_t>(info.nFileSizeHigh) << 32) | info.nFileSizeLow;
     const uint64_t written = (static_cast<uint64_t>(info.ftLastWriteTime.dwHighDateTime) << 32) |
                              info.ftLastWriteTime.dwLowDateTime;
@@ -455,7 +521,7 @@ Verdict Analyze(const std::wstring& path, const Options& opt) {
     {
         std::lock_guard<std::mutex> lock(g_cacheLock);
         auto it = g_cache.find(key);
-        if (it != g_cache.end()) { CloseHandle(file); return it->second; }
+        if (it != g_cache.end()) return it->second;
     }
 
     Evidence ev;
@@ -528,14 +594,16 @@ Verdict Analyze(const std::wstring& path, const Options& opt) {
             if (total > 0) CollectFromYara(YaraEngine::Get().Scan(head.data(), total), {}, ev);
         }
     }
-    CloseHandle(file);
 
     if (!v.skipped) Decide(ev, path, opt, v);
+    if (v.level != Verdict::Clean) v.origin = DownloadOrigin(path);
 
     std::lock_guard<std::mutex> lock(g_cacheLock);
     if (g_cache.size() > 50000) g_cache.clear();
     g_cache[key] = v;
     return v;
 }
+
+} // namespace
 
 } // namespace FileAnalyzer

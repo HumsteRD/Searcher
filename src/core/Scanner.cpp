@@ -35,9 +35,11 @@ void Scanner::Start(const ScanConfig& config) {
         currentWeight_ = 1;
         checkedBefore_ = checkedCurrent_ = 0;
         startedAt_ = std::chrono::steady_clock::now();
+        pausedTotal_ = {};
     }
 
     cancel_.requested.store(false);
+    cancel_.paused.store(false);
     state_.store(ScanState::Running);
     worker_ = std::thread([this, config] { Worker(config); });
 }
@@ -49,16 +51,34 @@ void Scanner::Cancel() {
     }
 }
 
+void Scanner::SetPaused(bool paused) {
+    if (state_.load() != ScanState::Running) return;
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (cancel_.paused.exchange(paused) == paused) return;
+    const auto now = std::chrono::steady_clock::now();
+    if (paused) pausedAt_ = now;
+    else        pausedTotal_ += now - pausedAt_;
+}
+
+int Scanner::ElapsedMsLocked() const {
+    auto spent = std::chrono::steady_clock::now() - startedAt_ - pausedTotal_;
+    if (cancel_.IsPaused()) spent -= std::chrono::steady_clock::now() - pausedAt_;
+    return static_cast<int>(std::max<long long>(
+        0, std::chrono::duration_cast<std::chrono::milliseconds>(spent).count()));
+}
+
 ScanStats Scanner::Stats() {
     std::lock_guard<std::mutex> lock(mutex_);
     ScanStats out = stats_;
     const ScanState st = state_.load();
     if (st == ScanState::Running || st == ScanState::Cancelling) {
-        out.elapsedMs = static_cast<int>(std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::steady_clock::now() - startedAt_).count());
+        out.paused = cancel_.IsPaused() && st == ScanState::Running;
+        out.elapsedMs = ElapsedMsLocked();
         // Оценку даём, только когда процент честный и прошло достаточно,
         // чтобы скорость успела установиться.
-        if (out.progressPercent >= 3 && out.elapsedMs > 3000) {
+        if (out.paused) {
+            out.etaMs = -1;
+        } else if (out.progressPercent >= 3 && out.elapsedMs > 3000) {
             const double done = out.progressPercent / 100.0;
             out.etaMs = static_cast<int>(out.elapsedMs * (1.0 - done) / done);
         } else {
@@ -169,6 +189,10 @@ void Scanner::Worker(ScanConfig config) {
     }
 
     for (const auto& m : active) {
+        // Между модулями пауза соблюдается здесь; внутри файлового модуля —
+        // его собственными потоками.
+        while (cancel_.IsPaused() && !cancel_.IsCancelled())
+            std::this_thread::sleep_for(std::chrono::milliseconds(40));
         if (cancel_.IsCancelled()) break;
         {
             std::lock_guard<std::mutex> lock(mutex_);
@@ -197,10 +221,11 @@ void Scanner::Worker(ScanConfig config) {
         if (!stats_.cancelled) stats_.progressPercent = 100;
         stats_.currentStage = "Done";
         stats_.currentItem.clear();
-        stats_.elapsedMs = static_cast<int>(std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::steady_clock::now() - startedAt_).count());
+        stats_.elapsedMs = ElapsedMsLocked();
         stats_.etaMs = 0;
+        stats_.paused = false;
     }
+    cancel_.paused.store(false);
     Logger::Instance().Info("=== Scan finished ===");
     state_.store(ScanState::Done);
 }

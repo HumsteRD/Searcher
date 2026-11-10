@@ -33,14 +33,20 @@ public:
         const std::wstring& threatName,
         const std::wstring& severity);
 
-    // Восстановить файл из карантина на исходное место.
+    // Восстановить файл из карантина на исходное место. Если там уже
+    // лежит другой файл, он не затирается: восстановленный получает имя
+    // «… (restored)». Куда именно — LastRestoredPath().
     bool Restore(const std::string& id);
+    const std::wstring& LastRestoredPath() const { return lastRestoredPath_; }
 
     // Удалить файл из карантина навсегда.
     bool DeletePermanently(const std::string& id);
 
     // Список всех элементов в карантине.
     std::vector<QuarantineItem> List() const;
+
+    // Сколько записей в карантине — без чтения самих записей.
+    size_t Count() const;
 
     // Последний QuarantineFile не смог удалить занятый оригинал сразу
     // и поставил удаление на перезагрузку.
@@ -52,8 +58,7 @@ private:
     std::filesystem::path MetaPath(const std::string& id) const;
     std::filesystem::path BlobPath(const std::string& id) const;
 
-    static void XorTransform(std::vector<char>& data);
-
     std::filesystem::path dir_;
     bool lastPendingReboot_ = false;
+    std::wstring lastRestoredPath_;
 };
